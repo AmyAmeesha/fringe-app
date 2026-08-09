@@ -37,7 +37,7 @@
     .slot { display:grid; grid-template-columns:72px 1fr; background:var(--paper); border:1px solid var(--line); border-bottom:0; }
     .slot:last-child { border-bottom:1px solid var(--line); }
     .time { padding:10px; font-weight:850; color:var(--accent); background:#fbf7ef; border-right:1px solid var(--line); font-variant-numeric:tabular-nums; }
-    .event { display:grid; grid-template-columns:58px minmax(220px,1.35fr) minmax(150px,.75fr) 102px 105px 66px; gap:10px; align-items:start; padding:9px 10px; border-bottom:1px solid #eee7dd; }
+    .event { display:grid; grid-template-columns:58px minmax(220px,1.35fr) minmax(150px,.75fr) 102px 105px 86px; gap:10px; align-items:start; padding:9px 10px; border-bottom:1px solid #eee7dd; }
     .event:last-child { border-bottom:0; }
     .start { font-weight:850; font-variant-numeric:tabular-nums; }
     a { color:var(--teal); text-decoration:none; }
@@ -47,10 +47,16 @@
     .cat { background:#e4f0ed; color:#104d45; }
     .signal { display:inline-flex; gap:5px; align-items:center; padding:4px 7px; border-radius:6px; border:1px solid #e0c072; background:#f5e8c8; color:#2f2410; font-size:12px; font-weight:850; }
     .add.added { background:var(--teal); color:white; border-color:var(--teal); }
+    .action,.schedule-actions { display:flex; flex-direction:column; gap:6px; align-items:stretch; }
+    .ticket-link { min-height:34px; border:1px solid var(--line); border-radius:7px; padding:8px 10px; background:white; color:var(--teal); font-size:13px; font-weight:750; text-align:center; }
+    .ticket-link:hover { text-decoration:none; background:#f5fbf9; }
     details { grid-column:2 / -1; color:var(--muted); font-size:13px; }
     summary { cursor:pointer; color:var(--teal); width:max-content; }
-    .schedule-card { display:grid; grid-template-columns:72px 1fr minmax(150px,.7fr) 82px; gap:10px; background:var(--paper); border:1px solid var(--line); border-radius:7px; padding:10px; margin:8px 0; }
+    .schedule-card { display:grid; grid-template-columns:72px 1fr minmax(150px,.7fr) 116px; gap:10px; background:var(--paper); border:1px solid var(--line); border-radius:7px; padding:10px; margin:8px 0; }
     .schedule-card.conflict { border-color:#c63838; background:#fff6f4; }
+    .schedule-card.bought { border-color:#78b89f; background:#f3fbf6; }
+    .bought-toggle { display:flex; align-items:center; gap:7px; min-height:34px; border:1px solid var(--line); border-radius:7px; padding:7px 9px; background:white; color:var(--ink); font-size:13px; font-weight:750; }
+    .bought-toggle input,.checkrow input { height:auto; min-width:auto; }
     .conflict { color:#a42a2a; font-size:12px; font-weight:850; margin-top:3px; }
     .empty { background:white; border:1px solid var(--line); border-radius:7px; padding:22px; color:var(--muted); }
     .more-wrap { display:flex; justify-content:center; padding:16px 0 6px; }
@@ -65,7 +71,7 @@
       .event { grid-template-columns:52px 1fr; }
       .venue,.location,.signalwrap,.price,.action,details { grid-column:2; }
       .schedule-card { grid-template-columns:58px 1fr; }
-      .schedule-card button,.schedule-card .venue { grid-column:2; }
+      .schedule-card button,.schedule-card .venue,.schedule-card .schedule-actions { grid-column:2; }
     }
     @media (max-width:540px) {
       .controls { grid-template-columns:1fr; }
@@ -125,6 +131,7 @@
     const days = {'2026-08-14':'Friday 14 August','2026-08-15':'Saturday 15 August','2026-08-16':'Sunday 16 August'};
     let events = [];
     let scheduleIds = new Set();
+    let boughtTickets = new Map();
     let activeGenres = new Set();
     let visibleEvents = [];
     let displayLimit = 100;
@@ -132,6 +139,7 @@
 
     const $ = id => document.getElementById(id);
     const esc = s => String(s ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+    const isTicketColumnError = error => /ticket_bought|column/i.test(String(error?.message || ''));
     const timeToMin = t => { const [h,m] = String(t || '00:00').split(':').map(Number); return h * 60 + m; };
     const minToTime = mins => String(Math.floor(mins/60)).padStart(2,'0') + ':' + String(mins % 60).padStart(2,'0');
     const money = value => '£' + Number(value || 0).toFixed(2);
@@ -158,9 +166,13 @@
     }
 
     async function fetchSchedule() {
-      const { data, error } = await supabase.from('schedule_items').select('event_id').eq('trip_id', TRIP_ID);
+      let { data, error } = await supabase.from('schedule_items').select('event_id,ticket_bought').eq('trip_id', TRIP_ID);
+      if (error && isTicketColumnError(error)) {
+        ({ data, error } = await supabase.from('schedule_items').select('event_id').eq('trip_id', TRIP_ID));
+      }
       if (error) throw error;
       scheduleIds = new Set((data || []).map(row => row.event_id));
+      boughtTickets = new Map((data || []).map(row => [row.event_id, Boolean(row.ticket_bought)]));
       renderSchedule();
       updateAddButtons();
     }
@@ -255,7 +267,7 @@
         <div class="venue"><a target="_blank" rel="noopener" href="${esc(event.maps_search)}">${esc(event.venue || 'Map search')}</a><div class="location">${esc(event.location)}</div></div>
         <div class="signalwrap"><div class="signal">${Number(event.signal_score || 0)}/5 ${esc(event.signal_label)}</div><div class="why">${esc(event.signal_reasons)}</div></div>
         <div class="price">${esc([event.duration, event.price].filter(Boolean).join(' '))}</div>
-        <div class="action"><button class="add ${added ? 'added' : ''}" data-id="${esc(event.id)}">${added ? 'Added' : 'Add'}</button></div>
+        <div class="action"><button class="add ${added ? 'added' : ''}" data-id="${esc(event.id)}">${added ? 'Added' : 'Add'}</button><a class="ticket-link" target="_blank" rel="noopener" href="${esc(event.edfringe_search)}">Tickets</a></div>
         ${event.description ? `<details><summary>Description</summary><div class="desc">${esc(event.description)}</div></details>` : ''}
       </article>`;
     }
@@ -265,13 +277,33 @@
         const { error } = await supabase.from('schedule_items').delete().eq('trip_id', TRIP_ID).eq('event_id', eventId);
         if (error) return alert(error.message);
         scheduleIds.delete(eventId);
+        boughtTickets.delete(eventId);
       } else {
-        const { error } = await supabase.from('schedule_items').insert({ trip_id: TRIP_ID, event_id: eventId });
+        let { error } = await supabase.from('schedule_items').insert({ trip_id: TRIP_ID, event_id: eventId, ticket_bought: false });
+        if (error && isTicketColumnError(error)) {
+          ({ error } = await supabase.from('schedule_items').insert({ trip_id: TRIP_ID, event_id: eventId }));
+        }
         if (error && !String(error.message).includes('duplicate')) return alert(error.message);
         scheduleIds.add(eventId);
+        boughtTickets.set(eventId, false);
       }
       renderSchedule();
       updateAddButtons();
+    }
+
+    async function setTicketBought(eventId, bought) {
+      boughtTickets.set(eventId, bought);
+      renderSchedule();
+      const { error } = await supabase
+        .from('schedule_items')
+        .update({ ticket_bought: bought })
+        .eq('trip_id', TRIP_ID)
+        .eq('event_id', eventId);
+      if (error) {
+        boughtTickets.set(eventId, !bought);
+        renderSchedule();
+        alert(isTicketColumnError(error) ? 'Run the Supabase ticket_bought migration first, then try again.' : error.message);
+      }
     }
 
     function updateAddButtons() {
@@ -300,16 +332,18 @@
           const start = timeToMin(event.start);
           const end = start + Number(event.duration_minutes || 60);
           const conflict = selected.some(other => other.id !== event.id && other.date === event.date && start < timeToMin(other.start) + Number(other.duration_minutes || 60) && end > timeToMin(other.start));
-          return `<article class="schedule-card ${conflict ? 'conflict' : ''}">
+          const bought = boughtTickets.get(event.id) === true;
+          return `<article class="schedule-card ${conflict ? 'conflict' : ''} ${bought ? 'bought' : ''}">
             <div class="start">${esc(String(event.start).slice(0,5))}<br><span class="meta">${minToTime(end)}</span></div>
-            <div><a class="title" target="_blank" rel="noopener" href="${esc(event.edfringe_search)}">${esc(event.title)}</a><div class="meta">${esc(event.company)}</div><div class="meta">${esc(event.duration || '')} · ${esc(event.price || 'No price listed')} · ${event.signal_score}/5 ${esc(event.signal_label)}</div>${conflict ? '<div class="conflict">Time clash</div>' : ''}</div>
+            <div><a class="title" target="_blank" rel="noopener" href="${esc(event.edfringe_search)}">${esc(event.title)}</a><div class="meta">${esc(event.company)}</div><div class="meta">${esc(event.duration || '')} · ${esc(event.price || 'No price listed')} · ${event.signal_score}/5 ${esc(event.signal_label)}${bought ? ' · Ticket bought' : ''}</div>${conflict ? '<div class="conflict">Time clash</div>' : ''}</div>
             <div class="venue"><a target="_blank" rel="noopener" href="${esc(event.maps_search)}">${esc(event.venue || 'Map search')}</a><div class="location">${esc(event.location)}</div></div>
-            <button data-remove="${esc(event.id)}">Remove</button>
+            <div class="schedule-actions"><label class="bought-toggle"><input type="checkbox" data-bought="${esc(event.id)}" ${bought ? 'checked' : ''}> Bought</label><a class="ticket-link" target="_blank" rel="noopener" href="${esc(event.edfringe_search)}">Tickets</a><button data-remove="${esc(event.id)}">Remove</button></div>
           </article>`;
         }).join('');
         return `<section><div class="dayhead"><h2>${days[date] || date}</h2><div class="muted">${byDay[date].length} shows</div></div>${cards}</section>`;
       }).join('');
       document.querySelectorAll('[data-remove]').forEach(btn => btn.addEventListener('click', () => toggleSchedule(btn.dataset.remove)));
+      document.querySelectorAll('[data-bought]').forEach(input => input.addEventListener('change', () => setTicketBought(input.dataset.bought, input.checked)));
     }
 
     function groupBy(items, getKey) {
@@ -363,6 +397,7 @@
       const { error } = await supabase.from('schedule_items').delete().eq('trip_id', TRIP_ID);
       if (error) alert(error.message);
       scheduleIds = new Set();
+      boughtTickets = new Map();
       renderSchedule();
       updateAddButtons();
     });
