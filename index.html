@@ -53,6 +53,8 @@
     .schedule-card.conflict { border-color:#c63838; background:#fff6f4; }
     .conflict { color:#a42a2a; font-size:12px; font-weight:850; margin-top:3px; }
     .empty { background:white; border:1px solid var(--line); border-radius:7px; padding:22px; color:var(--muted); }
+    .more-wrap { display:flex; justify-content:center; padding:16px 0 6px; }
+    .more-wrap button { min-width:150px; background:var(--ink); color:white; border-color:var(--ink); }
     .hidden { display:none !important; }
     @media (max-width:850px) {
       header { position:static; }
@@ -78,9 +80,9 @@
       <div class="sub">Shared schedule for 14-16 August. Events and schedule are loaded from Supabase.</div>
       <div class="controls">
         <label>Search <input id="search" type="search" placeholder="Title, artist, venue, genre..."></label>
-        <label>Date <select id="dateFilter"><option value="">All dates</option><option value="2026-08-14">Friday 14 Aug</option><option value="2026-08-15">Saturday 15 Aug</option><option value="2026-08-16">Sunday 16 Aug</option></select></label>
-        <label>From <input id="startAfter" type="time" step="300"></label>
-        <label>To <input id="startBefore" type="time" step="300"></label>
+        <label>Date <select id="dateFilter"><option value="">All dates</option><option value="2026-08-14" selected>Friday 14 Aug</option><option value="2026-08-15">Saturday 15 Aug</option><option value="2026-08-16">Sunday 16 Aug</option></select></label>
+        <label>From <input id="startAfter" type="time" step="300" value="17:00"></label>
+        <label>To <input id="startBefore" type="time" step="300" value="23:59"></label>
         <label>Min Signal <select id="minSignal"><option value="">Any</option><option value="5">5/5 must-check</option><option value="4">4/5 high+</option><option value="3">3/5 notable+</option></select></label>
       </div>
       <div class="quick">
@@ -125,6 +127,8 @@
     let scheduleIds = new Set();
     let activeGenres = new Set();
     let visibleEvents = [];
+    let displayLimit = 100;
+    let searchTimer;
 
     const $ = id => document.getElementById(id);
     const esc = s => String(s ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
@@ -177,6 +181,7 @@
         if (input.checked) activeGenres.add(input.value);
         else activeGenres.delete(input.value);
         updateGenreSummary();
+        displayLimit = 100;
         applyFilters();
       }));
     }
@@ -224,13 +229,19 @@
         return;
       }
       $('browseBody').className = '';
-      const byDay = groupBy(visibleEvents, e => e.date);
+      const renderedEvents = visibleEvents.slice(0, displayLimit);
+      const hiddenCount = Math.max(visibleEvents.length - renderedEvents.length, 0);
+      const byDay = groupBy(renderedEvents, e => e.date);
       $('browseBody').innerHTML = Object.keys(byDay).sort().map(date => {
         const byBucket = groupBy(byDay[date], e => e.bucket || e.start?.slice(0,5) || '00:00');
         return `<section><div class="dayhead"><h2>${days[date] || date}</h2><div class="muted">${byDay[date].length.toLocaleString()} events</div></div>` +
           Object.keys(byBucket).sort().map(bucket => `<div class="slot"><div class="time">${esc(String(bucket).slice(0,5))}</div><div>${byBucket[bucket].map(renderEvent).join('')}</div></div>`).join('') +
           `</section>`;
-      }).join('');
+      }).join('') + (hiddenCount ? `<div class="more-wrap"><button id="showMore">Show 100 more (${hiddenCount.toLocaleString()} hidden)</button></div>` : '');
+      $('showMore')?.addEventListener('click', () => {
+        displayLimit += 100;
+        renderBrowse();
+      });
       document.querySelectorAll('.add').forEach(btn => btn.addEventListener('click', () => toggleSchedule(btn.dataset.id)));
       updateAddButtons();
     }
@@ -317,11 +328,15 @@
       $('scheduleTab').classList.toggle('active', schedule);
     }
 
-    $('search').addEventListener('input', applyFilters);
-    $('dateFilter').addEventListener('change', applyFilters);
-    $('startAfter').addEventListener('change', applyFilters);
-    $('startBefore').addEventListener('change', applyFilters);
-    $('minSignal').addEventListener('change', applyFilters);
+    const resetAndApply = () => { displayLimit = 100; applyFilters(); };
+    $('search').addEventListener('input', () => {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(resetAndApply, 180);
+    });
+    $('dateFilter').addEventListener('change', resetAndApply);
+    $('startAfter').addEventListener('change', resetAndApply);
+    $('startBefore').addEventListener('change', resetAndApply);
+    $('minSignal').addEventListener('change', resetAndApply);
     $('browseTab').addEventListener('click', () => showTab('browse'));
     $('scheduleTab').addEventListener('click', () => { renderSchedule(); showTab('schedule'); });
     $('clearFilters').addEventListener('click', () => {
@@ -333,12 +348,14 @@
       activeGenres = new Set();
       document.querySelectorAll('.genrecheck').forEach(input => input.checked = false);
       updateGenreSummary();
+      displayLimit = 100;
       applyFilters();
     });
     document.querySelectorAll('[data-preset]').forEach(btn => btn.addEventListener('click', () => {
       const [from, to] = btn.dataset.preset.split('-');
       $('startAfter').value = from;
       $('startBefore').value = to;
+      displayLimit = 100;
       applyFilters();
     }));
     $('clearSchedule').addEventListener('click', async () => {
