@@ -140,6 +140,12 @@
     const $ = id => document.getElementById(id);
     const esc = s => String(s ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
     const isTicketColumnError = error => /ticket_bought|column/i.test(String(error?.message || ''));
+    const showSlug = title => String(title || '')
+      .toLowerCase()
+      .replace(/&/g, ' and ')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+    const ticketUrl = event => `https://www.edfringe.com/tickets/whats-on/${showSlug(event.title)}`;
     const timeToMin = t => { const [h,m] = String(t || '00:00').split(':').map(Number); return h * 60 + m; };
     const minToTime = mins => String(Math.floor(mins/60)).padStart(2,'0') + ':' + String(mins % 60).padStart(2,'0');
     const money = value => '£' + Number(value || 0).toFixed(2);
@@ -263,11 +269,11 @@
       const tags = [event.category, event.genre].filter(Boolean).map((t,i) => `<span class="tag ${i===0 ? 'cat' : ''}">${esc(t)}</span>`).join(' ');
       return `<article class="event">
         <div class="start">${esc(String(event.start).slice(0,5))}</div>
-        <div><a class="title" target="_blank" rel="noopener" href="${esc(event.edfringe_search)}">${esc(event.title)}</a><div class="meta">${esc(event.company)}</div>${tags}</div>
+        <div><a class="title" target="_blank" rel="noopener" href="${esc(ticketUrl(event))}">${esc(event.title)}</a><div class="meta">${esc(event.company)}</div>${tags}</div>
         <div class="venue"><a target="_blank" rel="noopener" href="${esc(event.maps_search)}">${esc(event.venue || 'Map search')}</a><div class="location">${esc(event.location)}</div></div>
         <div class="signalwrap"><div class="signal">${Number(event.signal_score || 0)}/5 ${esc(event.signal_label)}</div><div class="why">${esc(event.signal_reasons)}</div></div>
         <div class="price">${esc([event.duration, event.price].filter(Boolean).join(' '))}</div>
-        <div class="action"><button class="add ${added ? 'added' : ''}" data-id="${esc(event.id)}">${added ? 'Added' : 'Add'}</button><a class="ticket-link" target="_blank" rel="noopener" href="${esc(event.edfringe_search)}">Tickets</a></div>
+        <div class="action"><button class="add ${added ? 'added' : ''}" data-id="${esc(event.id)}">${added ? 'Added' : 'Add'}</button><a class="ticket-link" target="_blank" rel="noopener" href="${esc(ticketUrl(event))}">Box office</a></div>
         ${event.description ? `<details><summary>Description</summary><div class="desc">${esc(event.description)}</div></details>` : ''}
       </article>`;
     }
@@ -335,9 +341,9 @@
           const bought = boughtTickets.get(event.id) === true;
           return `<article class="schedule-card ${conflict ? 'conflict' : ''} ${bought ? 'bought' : ''}">
             <div class="start">${esc(String(event.start).slice(0,5))}<br><span class="meta">${minToTime(end)}</span></div>
-            <div><a class="title" target="_blank" rel="noopener" href="${esc(event.edfringe_search)}">${esc(event.title)}</a><div class="meta">${esc(event.company)}</div><div class="meta">${esc(event.duration || '')} · ${esc(event.price || 'No price listed')} · ${event.signal_score}/5 ${esc(event.signal_label)}${bought ? ' · Ticket bought' : ''}</div>${conflict ? '<div class="conflict">Time clash</div>' : ''}</div>
+            <div><a class="title" target="_blank" rel="noopener" href="${esc(ticketUrl(event))}">${esc(event.title)}</a><div class="meta">${esc(event.company)}</div><div class="meta">${esc(event.duration || '')} · ${esc(event.price || 'No price listed')} · ${event.signal_score}/5 ${esc(event.signal_label)}${bought ? ' · Ticket bought' : ''}</div>${conflict ? '<div class="conflict">Time clash</div>' : ''}</div>
             <div class="venue"><a target="_blank" rel="noopener" href="${esc(event.maps_search)}">${esc(event.venue || 'Map search')}</a><div class="location">${esc(event.location)}</div></div>
-            <div class="schedule-actions"><label class="bought-toggle"><input type="checkbox" data-bought="${esc(event.id)}" ${bought ? 'checked' : ''}> Bought</label><a class="ticket-link" target="_blank" rel="noopener" href="${esc(event.edfringe_search)}">Tickets</a><button data-remove="${esc(event.id)}">Remove</button></div>
+            <div class="schedule-actions"><label class="bought-toggle"><input type="checkbox" data-bought="${esc(event.id)}" ${bought ? 'checked' : ''}> Bought</label><a class="ticket-link" target="_blank" rel="noopener" href="${esc(ticketUrl(event))}">Box office</a><button data-remove="${esc(event.id)}">Remove</button></div>
           </article>`;
         }).join('');
         return `<section><div class="dayhead"><h2>${days[date] || date}</h2><div class="muted">${byDay[date].length} shows</div></div>${cards}</section>`;
