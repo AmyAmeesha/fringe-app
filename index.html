@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <meta name="googlebot" content="noindex, nofollow, noarchive">
+  <title>Fringe Planner</title>
+  <style>
+    :root { --bg:#f7f4ef; --paper:#fffdf8; --ink:#191713; --muted:#68635c; --line:#ddd4c8; --soft:#ece5da; --accent:#b92f2f; --teal:#0d6b5f; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,sans-serif; line-height:1.35; }
+    header { position:sticky; top:0; z-index:5; background:rgba(255,253,248,.97); border-bottom:1px solid var(--line); backdrop-filter:blur(10px); }
+    .top { max-width:1180px; margin:0 auto; padding:14px 14px 12px; }
+    h1 { font-size:22px; margin:0 0 4px; }
+    .sub,.muted,.meta,.price,.venue,.location,.why,.desc { color:var(--muted); font-size:13px; }
+    .controls { display:grid; grid-template-columns:1.4fr 160px 115px 115px 145px; gap:8px; align-items:end; margin-top:10px; }
+    label { display:grid; gap:4px; font-size:12px; font-weight:700; color:#47413a; }
+    input,select { height:40px; border:1px solid var(--line); border-radius:7px; padding:0 10px; background:white; color:var(--ink); font-size:14px; min-width:0; }
+    .quick,.tabs { display:flex; gap:7px; flex-wrap:wrap; margin-top:10px; }
+    button,.tab { min-height:34px; border:1px solid var(--line); border-radius:7px; padding:0 10px; background:white; color:var(--ink); cursor:pointer; font-size:13px; font-weight:650; }
+    .tab.active { background:var(--accent); border-color:var(--accent); color:white; }
+    .genre-select { position:relative; margin-top:10px; max-width:360px; }
+    .genre-select summary { height:38px; border:1px solid var(--line); background:white; border-radius:7px; padding:0 12px; display:flex; align-items:center; justify-content:space-between; cursor:pointer; font-size:13px; }
+    .genre-menu { position:absolute; top:42px; left:0; right:0; max-height:330px; overflow:auto; background:white; border:1px solid var(--line); border-radius:7px; box-shadow:0 14px 28px rgba(20,15,10,.14); padding:8px; z-index:10; }
+    .checkrow { display:flex; gap:8px; align-items:center; padding:7px 6px; border-radius:5px; font-size:13px; cursor:pointer; }
+    .checkrow:hover { background:var(--soft); }
+    .checkrow input { accent-color:var(--teal); }
+    main { max-width:1180px; margin:0 auto; padding:14px 14px 56px; }
+    .summary,.totals { display:flex; gap:10px; flex-wrap:wrap; align-items:center; color:var(--muted); font-size:14px; margin-bottom:12px; }
+    .summary strong,.totals strong { color:var(--ink); }
+    .panel { display:none; }
+    .panel.active { display:block; }
+    .dayhead { display:flex; justify-content:space-between; align-items:end; margin:18px 0 9px; border-bottom:2px solid var(--ink); padding-bottom:6px; }
+    h2 { font-size:20px; margin:0; }
+    .slot { display:grid; grid-template-columns:72px 1fr; background:var(--paper); border:1px solid var(--line); border-bottom:0; }
+    .slot:last-child { border-bottom:1px solid var(--line); }
+    .time { padding:10px; font-weight:850; color:var(--accent); background:#fbf7ef; border-right:1px solid var(--line); font-variant-numeric:tabular-nums; }
+    .event { display:grid; grid-template-columns:58px minmax(220px,1.35fr) minmax(150px,.75fr) 102px 105px 66px; gap:10px; align-items:start; padding:9px 10px; border-bottom:1px solid #eee7dd; }
+    .event:last-child { border-bottom:0; }
+    .start { font-weight:850; font-variant-numeric:tabular-nums; }
+    a { color:var(--teal); text-decoration:none; }
+    a:hover { text-decoration:underline; }
+    .title { color:var(--ink); font-weight:800; }
+    .tag { display:inline-flex; margin-top:4px; padding:2px 6px; border-radius:5px; background:var(--soft); font-size:12px; color:#312e2a; }
+    .cat { background:#e4f0ed; color:#104d45; }
+    .signal { display:inline-flex; gap:5px; align-items:center; padding:4px 7px; border-radius:6px; border:1px solid #e0c072; background:#f5e8c8; color:#2f2410; font-size:12px; font-weight:850; }
+    .add.added { background:var(--teal); color:white; border-color:var(--teal); }
+    details { grid-column:2 / -1; color:var(--muted); font-size:13px; }
+    summary { cursor:pointer; color:var(--teal); width:max-content; }
+    .schedule-card { display:grid; grid-template-columns:72px 1fr minmax(150px,.7fr) 82px; gap:10px; background:var(--paper); border:1px solid var(--line); border-radius:7px; padding:10px; margin:8px 0; }
+    .schedule-card.conflict { border-color:#c63838; background:#fff6f4; }
+    .conflict { color:#a42a2a; font-size:12px; font-weight:850; margin-top:3px; }
+    .empty { background:white; border:1px solid var(--line); border-radius:7px; padding:22px; color:var(--muted); }
+    .hidden { display:none !important; }
+    @media (max-width:850px) {
+      header { position:static; }
+      .controls { grid-template-columns:1fr 1fr; }
+      .controls label:first-child { grid-column:1 / -1; }
+      .slot { grid-template-columns:1fr; }
+      .time { border-right:0; border-bottom:1px solid var(--line); }
+      .event { grid-template-columns:52px 1fr; }
+      .venue,.location,.signalwrap,.price,.action,details { grid-column:2; }
+      .schedule-card { grid-template-columns:58px 1fr; }
+      .schedule-card button,.schedule-card .venue { grid-column:2; }
+    }
+    @media (max-width:540px) {
+      .controls { grid-template-columns:1fr; }
+      h1 { font-size:20px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="top">
+      <h1>Fringe Planner</h1>
+      <div class="sub">Shared schedule for 14-16 August. Events and schedule are loaded from Supabase.</div>
+      <div class="controls">
+        <label>Search <input id="search" type="search" placeholder="Title, artist, venue, genre..."></label>
+        <label>Date <select id="dateFilter"><option value="">All dates</option><option value="2026-08-14">Friday 14 Aug</option><option value="2026-08-15">Saturday 15 Aug</option><option value="2026-08-16">Sunday 16 Aug</option></select></label>
+        <label>From <input id="startAfter" type="time" step="300"></label>
+        <label>To <input id="startBefore" type="time" step="300"></label>
+        <label>Min Signal <select id="minSignal"><option value="">Any</option><option value="5">5/5 must-check</option><option value="4">4/5 high+</option><option value="3">3/5 notable+</option></select></label>
+      </div>
+      <div class="quick">
+        <button data-preset="09:00-12:00">Morning</button>
+        <button data-preset="12:00-17:00">Afternoon</button>
+        <button data-preset="17:00-20:00">5-8pm</button>
+        <button data-preset="20:00-23:59">Late</button>
+        <button id="clearFilters">Clear Filters</button>
+      </div>
+      <div class="genre-select">
+        <details>
+          <summary><span id="genreSummary">Genres: Any</span><span>v</span></summary>
+          <div id="genreMenu" class="genre-menu"></div>
+        </details>
+      </div>
+      <div class="tabs">
+        <button id="browseTab" class="tab active">Browse</button>
+        <button id="scheduleTab" class="tab">My Schedule (0)</button>
+      </div>
+    </div>
+  </header>
+  <main>
+    <section id="browsePanel" class="panel active">
+      <div class="summary"><span><strong id="visibleCount">0</strong> visible events</span><span id="rangeLabel">Loading...</span></div>
+      <div id="browseBody" class="empty">Loading events from Supabase...</div>
+    </section>
+    <section id="schedulePanel" class="panel">
+      <div class="totals"><span><strong id="scheduleCount">0</strong> shows</span><span><strong id="scheduleCost">£0.00</strong> estimated total</span><button id="clearSchedule">Clear Schedule</button></div>
+      <div id="scheduleBody" class="empty">Loading schedule...</div>
+    </section>
+  </main>
+  <script type="module">
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+    const SUPABASE_URL = 'https://ewiqrnibawljigzooxrn.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_FJ20NGH-tgVKN6Fx9fEZMA_3rvfapVC';
+    const TRIP_ID = 'fringe-2026';
+    const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    const days = {'2026-08-14':'Friday 14 August','2026-08-15':'Saturday 15 August','2026-08-16':'Sunday 16 August'};
+    let events = [];
+    let scheduleIds = new Set();
+    let activeGenres = new Set();
+    let visibleEvents = [];
+
+    const $ = id => document.getElementById(id);
+    const esc = s => String(s ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+    const timeToMin = t => { const [h,m] = String(t || '00:00').split(':').map(Number); return h * 60 + m; };
+    const minToTime = mins => String(Math.floor(mins/60)).padStart(2,'0') + ':' + String(mins % 60).padStart(2,'0');
+    const money = value => '£' + Number(value || 0).toFixed(2);
+
+    async function fetchAllEvents() {
+      const pageSize = 1000;
+      let from = 0;
+      let all = [];
+      while (true) {
+        const { data, error } = await supabase
+          .from('events')
+          .select('*')
+          .order('date', { ascending: true })
+          .order('start', { ascending: true })
+          .range(from, from + pageSize - 1);
+        if (error) throw error;
+        all = all.concat(data || []);
+        if (!data || data.length < pageSize) break;
+        from += pageSize;
+      }
+      events = all;
+      buildGenreMenu();
+      applyFilters();
+    }
+
+    async function fetchSchedule() {
+      const { data, error } = await supabase.from('schedule_items').select('event_id').eq('trip_id', TRIP_ID);
+      if (error) throw error;
+      scheduleIds = new Set((data || []).map(row => row.event_id));
+      renderSchedule();
+      updateAddButtons();
+    }
+
+    function buildGenreMenu() {
+      const counts = new Map();
+      const add = value => {
+        const v = String(value || '').trim();
+        if (v.length >= 3 && v.length <= 34) counts.set(v, (counts.get(v) || 0) + 1);
+      };
+      events.forEach(event => {
+        add(event.category);
+        String(event.genre || '').split(/[,/]/).forEach(add);
+      });
+      const options = [...counts.entries()].sort((a,b) => b[1] - a[1]).slice(0, 48).map(([name]) => name);
+      $('genreMenu').innerHTML = options.map(name => `<label class="checkrow"><input class="genrecheck" type="checkbox" value="${esc(name)}"> <span>${esc(name)}</span></label>`).join('');
+      document.querySelectorAll('.genrecheck').forEach(input => input.addEventListener('change', () => {
+        if (input.checked) activeGenres.add(input.value);
+        else activeGenres.delete(input.value);
+        updateGenreSummary();
+        applyFilters();
+      }));
+    }
+
+    function updateGenreSummary() {
+      $('genreSummary').textContent = activeGenres.size === 0 ? 'Genres: Any' : activeGenres.size === 1 ? [...activeGenres][0] : `${activeGenres.size} genres selected`;
+    }
+
+    function eventTags(event) {
+      return [event.category, ...String(event.genre || '').split(/[,/]/)].map(s => String(s || '').trim()).filter(Boolean);
+    }
+
+    function applyFilters() {
+      const q = $('search').value.trim().toLowerCase();
+      const date = $('dateFilter').value;
+      const from = $('startAfter').value ? timeToMin($('startAfter').value) : 0;
+      const to = $('startBefore').value ? timeToMin($('startBefore').value) : 1439;
+      const minSignal = Number($('minSignal').value || 0);
+      visibleEvents = events.filter(event => {
+        const startMin = timeToMin(event.start);
+        const hay = [event.title,event.company,event.category,event.genre,event.venue,event.location,event.description,event.signal_label,event.signal_reasons].join(' ').toLowerCase();
+        const tags = eventTags(event);
+        return (!date || event.date === date)
+          && startMin >= from
+          && startMin <= to
+          && Number(event.signal_score || 0) >= minSignal
+          && (!activeGenres.size || [...activeGenres].some(g => tags.includes(g)))
+          && (!q || hay.includes(q));
+      });
+      $('visibleCount').textContent = visibleEvents.length.toLocaleString();
+      const bits = [];
+      if (date) bits.push(days[date]);
+      bits.push(`${$('startAfter').value || '00:00'}-${$('startBefore').value || '23:59'}`);
+      if (activeGenres.size) bits.push([...activeGenres].join(', '));
+      if (minSignal) bits.push(`${minSignal}/5+ signal`);
+      if (q) bits.push(`"${q}"`);
+      $('rangeLabel').textContent = bits.join(' · ');
+      renderBrowse();
+    }
+
+    function renderBrowse() {
+      if (!visibleEvents.length) {
+        $('browseBody').className = 'empty';
+        $('browseBody').innerHTML = 'No events match the current filters.';
+        return;
+      }
+      $('browseBody').className = '';
+      const byDay = groupBy(visibleEvents, e => e.date);
+      $('browseBody').innerHTML = Object.keys(byDay).sort().map(date => {
+        const byBucket = groupBy(byDay[date], e => e.bucket || e.start?.slice(0,5) || '00:00');
+        return `<section><div class="dayhead"><h2>${days[date] || date}</h2><div class="muted">${byDay[date].length.toLocaleString()} events</div></div>` +
+          Object.keys(byBucket).sort().map(bucket => `<div class="slot"><div class="time">${esc(String(bucket).slice(0,5))}</div><div>${byBucket[bucket].map(renderEvent).join('')}</div></div>`).join('') +
+          `</section>`;
+      }).join('');
+      document.querySelectorAll('.add').forEach(btn => btn.addEventListener('click', () => toggleSchedule(btn.dataset.id)));
+      updateAddButtons();
+    }
+
+    function renderEvent(event) {
+      const added = scheduleIds.has(event.id);
+      const tags = [event.category, event.genre].filter(Boolean).map((t,i) => `<span class="tag ${i===0 ? 'cat' : ''}">${esc(t)}</span>`).join(' ');
+      return `<article class="event">
+        <div class="start">${esc(String(event.start).slice(0,5))}</div>
+        <div><a class="title" target="_blank" rel="noopener" href="${esc(event.edfringe_search)}">${esc(event.title)}</a><div class="meta">${esc(event.company)}</div>${tags}</div>
+        <div class="venue"><a target="_blank" rel="noopener" href="${esc(event.maps_search)}">${esc(event.venue || 'Map search')}</a><div class="location">${esc(event.location)}</div></div>
+        <div class="signalwrap"><div class="signal">${Number(event.signal_score || 0)}/5 ${esc(event.signal_label)}</div><div class="why">${esc(event.signal_reasons)}</div></div>
+        <div class="price">${esc([event.duration, event.price].filter(Boolean).join(' '))}</div>
+        <div class="action"><button class="add ${added ? 'added' : ''}" data-id="${esc(event.id)}">${added ? 'Added' : 'Add'}</button></div>
+        ${event.description ? `<details><summary>Description</summary><div class="desc">${esc(event.description)}</div></details>` : ''}
+      </article>`;
+    }
+
+    async function toggleSchedule(eventId) {
+      if (scheduleIds.has(eventId)) {
+        const { error } = await supabase.from('schedule_items').delete().eq('trip_id', TRIP_ID).eq('event_id', eventId);
+        if (error) return alert(error.message);
+        scheduleIds.delete(eventId);
+      } else {
+        const { error } = await supabase.from('schedule_items').insert({ trip_id: TRIP_ID, event_id: eventId });
+        if (error && !String(error.message).includes('duplicate')) return alert(error.message);
+        scheduleIds.add(eventId);
+      }
+      renderSchedule();
+      updateAddButtons();
+    }
+
+    function updateAddButtons() {
+      document.querySelectorAll('.add').forEach(btn => {
+        const added = scheduleIds.has(btn.dataset.id);
+        btn.classList.toggle('added', added);
+        btn.textContent = added ? 'Added' : 'Add';
+      });
+      $('scheduleTab').textContent = `My Schedule (${scheduleIds.size})`;
+    }
+
+    function renderSchedule() {
+      const selected = events.filter(event => scheduleIds.has(event.id)).sort((a,b) => a.date.localeCompare(b.date) || timeToMin(a.start) - timeToMin(b.start));
+      const total = selected.reduce((sum, event) => sum + Number(event.price_amount || 0), 0);
+      $('scheduleCount').textContent = selected.length.toLocaleString();
+      $('scheduleCost').textContent = money(total);
+      if (!selected.length) {
+        $('scheduleBody').className = 'empty';
+        $('scheduleBody').innerHTML = 'Your shared schedule is empty. Add shows from Browse.';
+        return;
+      }
+      $('scheduleBody').className = '';
+      const byDay = groupBy(selected, e => e.date);
+      $('scheduleBody').innerHTML = Object.keys(byDay).sort().map(date => {
+        const cards = byDay[date].map(event => {
+          const start = timeToMin(event.start);
+          const end = start + Number(event.duration_minutes || 60);
+          const conflict = selected.some(other => other.id !== event.id && other.date === event.date && start < timeToMin(other.start) + Number(other.duration_minutes || 60) && end > timeToMin(other.start));
+          return `<article class="schedule-card ${conflict ? 'conflict' : ''}">
+            <div class="start">${esc(String(event.start).slice(0,5))}<br><span class="meta">${minToTime(end)}</span></div>
+            <div><a class="title" target="_blank" rel="noopener" href="${esc(event.edfringe_search)}">${esc(event.title)}</a><div class="meta">${esc(event.company)}</div><div class="meta">${esc(event.duration || '')} · ${esc(event.price || 'No price listed')} · ${event.signal_score}/5 ${esc(event.signal_label)}</div>${conflict ? '<div class="conflict">Time clash</div>' : ''}</div>
+            <div class="venue"><a target="_blank" rel="noopener" href="${esc(event.maps_search)}">${esc(event.venue || 'Map search')}</a><div class="location">${esc(event.location)}</div></div>
+            <button data-remove="${esc(event.id)}">Remove</button>
+          </article>`;
+        }).join('');
+        return `<section><div class="dayhead"><h2>${days[date] || date}</h2><div class="muted">${byDay[date].length} shows</div></div>${cards}</section>`;
+      }).join('');
+      document.querySelectorAll('[data-remove]').forEach(btn => btn.addEventListener('click', () => toggleSchedule(btn.dataset.remove)));
+    }
+
+    function groupBy(items, getKey) {
+      return items.reduce((acc, item) => {
+        const key = getKey(item);
+        (acc[key] ||= []).push(item);
+        return acc;
+      }, {});
+    }
+
+    function showTab(name) {
+      const schedule = name === 'schedule';
+      $('browsePanel').classList.toggle('active', !schedule);
+      $('schedulePanel').classList.toggle('active', schedule);
+      $('browseTab').classList.toggle('active', !schedule);
+      $('scheduleTab').classList.toggle('active', schedule);
+    }
+
+    $('search').addEventListener('input', applyFilters);
+    $('dateFilter').addEventListener('change', applyFilters);
+    $('startAfter').addEventListener('change', applyFilters);
+    $('startBefore').addEventListener('change', applyFilters);
+    $('minSignal').addEventListener('change', applyFilters);
+    $('browseTab').addEventListener('click', () => showTab('browse'));
+    $('scheduleTab').addEventListener('click', () => { renderSchedule(); showTab('schedule'); });
+    $('clearFilters').addEventListener('click', () => {
+      $('search').value = '';
+      $('dateFilter').value = '';
+      $('startAfter').value = '';
+      $('startBefore').value = '';
+      $('minSignal').value = '';
+      activeGenres = new Set();
+      document.querySelectorAll('.genrecheck').forEach(input => input.checked = false);
+      updateGenreSummary();
+      applyFilters();
+    });
+    document.querySelectorAll('[data-preset]').forEach(btn => btn.addEventListener('click', () => {
+      const [from, to] = btn.dataset.preset.split('-');
+      $('startAfter').value = from;
+      $('startBefore').value = to;
+      applyFilters();
+    }));
+    $('clearSchedule').addEventListener('click', async () => {
+      if (!confirm('Clear the shared schedule?')) return;
+      const { error } = await supabase.from('schedule_items').delete().eq('trip_id', TRIP_ID);
+      if (error) alert(error.message);
+      scheduleIds = new Set();
+      renderSchedule();
+      updateAddButtons();
+    });
+
+    supabase.channel('shared-schedule')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'schedule_items', filter: `trip_id=eq.${TRIP_ID}` }, fetchSchedule)
+      .subscribe();
+
+    try {
+      await fetchAllEvents();
+      await fetchSchedule();
+    } catch (error) {
+      console.error(error);
+      $('browseBody').className = 'empty';
+      $('browseBody').innerHTML = `Could not load Supabase data: ${esc(error.message)}`;
+    }
+  </script>
+</body>
+</html>
