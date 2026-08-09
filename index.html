@@ -145,7 +145,7 @@
       .replace(/&/g, ' and ')
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '');
-    const ticketUrl = event => `https://www.edfringe.com/tickets/whats-on/${showSlug(event.title)}`;
+    const ticketUrl = event => String(event.ticket_url || '').trim() || `https://www.edfringe.com/tickets/whats-on/${showSlug(event.title)}`;
     const timeToMin = t => { const [h,m] = String(t || '00:00').split(':').map(Number); return h * 60 + m; };
     const minToTime = mins => String(Math.floor(mins/60)).padStart(2,'0') + ':' + String(mins % 60).padStart(2,'0');
     const money = value => '£' + Number(value || 0).toFixed(2);
