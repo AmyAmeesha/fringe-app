@@ -7,12 +7,13 @@
   <meta name="googlebot" content="noindex, nofollow, noarchive">
   <title>Fringe Planner</title>
   <style>
-    :root { --bg:#f7f4ef; --paper:#fffdf8; --ink:#191713; --muted:#68635c; --line:#ddd4c8; --soft:#ece5da; --accent:#b92f2f; --teal:#0d6b5f; }
+    :root { --bg:#f7f4ef; --paper:#fffdf8; --ink:#191713; --muted:#68635c; --line:#ddd4c8; --soft:#ece5da; --accent:#b92f2f; --teal:#0d6b5f; --banner:#e84b92; }
     * { box-sizing:border-box; }
     body { margin:0; background:var(--bg); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,sans-serif; line-height:1.35; }
-    header { position:sticky; top:0; z-index:5; background:rgba(255,253,248,.97); border-bottom:1px solid var(--line); backdrop-filter:blur(10px); }
+    header { position:sticky; top:0; z-index:5; background:var(--banner); color:white; border-bottom:1px solid rgba(255,255,255,.25); backdrop-filter:blur(10px); }
     .top { max-width:1180px; margin:0 auto; padding:14px 14px 12px; }
     h1 { font-size:22px; margin:0 0 4px; }
+    header .sub, header .muted, header label { color:rgba(255,255,255,.88); }
     .sub,.muted,.meta,.price,.venue,.location,.why,.desc { color:var(--muted); font-size:13px; }
     .controls { display:grid; grid-template-columns:1.4fr 160px 115px 115px 145px; gap:8px; align-items:end; margin-top:10px; }
     label { display:grid; gap:4px; font-size:12px; font-weight:700; color:#47413a; }
