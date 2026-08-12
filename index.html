@@ -28,14 +28,17 @@
     .checkrow { display:flex; gap:8px; align-items:center; padding:7px 6px; border-radius:5px; color:var(--ink); font-size:13px; cursor:pointer; }
     .checkrow:hover { background:var(--soft); }
     .checkrow input { accent-color:var(--teal); }
-    main { max-width:1180px; margin:0 auto; padding:14px 14px 56px; }
+    main { max-width:1480px; margin:0 auto; padding:14px 14px 56px; }
     .summary,.totals { display:flex; gap:10px; flex-wrap:wrap; align-items:center; color:var(--muted); font-size:14px; margin-bottom:12px; }
     .summary strong,.totals strong { color:var(--ink); }
+    .split-view { display:grid; grid-template-columns:minmax(0,1fr) minmax(380px,48%); gap:14px; align-items:start; }
+    .list-pane { min-width:0; }
+    .map-pane { position:sticky; top:142px; min-width:0; }
     .map-shell { background:var(--paper); border:1px solid var(--line); border-radius:7px; overflow:hidden; margin:0 0 14px; }
     .map-head { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:9px 10px; border-bottom:1px solid var(--line); }
     .map-head strong { font-size:14px; }
     .map-note { color:var(--muted); font-size:12px; }
-    .map { height:360px; width:100%; background:#ece5da; }
+    .map { height:calc(100vh - 188px); min-height:430px; width:100%; background:#ece5da; }
     .distance-list { display:grid; gap:7px; padding:10px; border-top:1px solid var(--line); font-size:13px; color:var(--muted); }
     .distance-list div { display:flex; justify-content:space-between; gap:12px; border-bottom:1px solid #eee7dd; padding-bottom:7px; }
     .distance-list div:last-child { border-bottom:0; padding-bottom:0; }
@@ -49,6 +52,7 @@
     .time { padding:10px; font-weight:850; color:var(--accent); background:#fbf7ef; border-right:1px solid var(--line); font-variant-numeric:tabular-nums; }
     .event { display:grid; grid-template-columns:58px minmax(220px,1.35fr) minmax(150px,.75fr) 102px 105px 86px; gap:10px; align-items:start; padding:9px 10px; border-bottom:1px solid #eee7dd; }
     .event:last-child { border-bottom:0; }
+    .event.map-hover,.schedule-card.map-hover { outline:2px solid var(--accent); outline-offset:-2px; background:#fff8f8; }
     .start { font-weight:850; font-variant-numeric:tabular-nums; }
     a { color:var(--teal); text-decoration:none; }
     a:hover { text-decoration:underline; }
@@ -74,6 +78,8 @@
     .hidden { display:none !important; }
     @media (max-width:850px) {
       header { position:static; }
+      .split-view { grid-template-columns:1fr; }
+      .map-pane { position:static; order:-1; }
       .controls { grid-template-columns:1fr 1fr; }
       .controls label:first-child { grid-column:1 / -1; }
       .slot { grid-template-columns:1fr; }
@@ -82,7 +88,7 @@
       .venue,.location,.signalwrap,.price,.action,details { grid-column:2; }
       .schedule-card { grid-template-columns:58px 1fr; }
       .schedule-card button,.schedule-card .venue,.schedule-card .schedule-actions { grid-column:2; }
-      .map { height:310px; }
+      .map { height:310px; min-height:310px; }
       .distance-list div { display:block; }
     }
     @media (max-width:540px) {
@@ -125,20 +131,28 @@
   <main>
     <section id="browsePanel" class="panel active">
       <div class="summary"><span><strong id="visibleCount">0</strong> visible events</span><span id="rangeLabel">Loading...</span></div>
-      <div class="map-shell">
-        <div class="map-head"><strong>Browse Map</strong><span id="browseMapNote" class="map-note">Loading venues...</span></div>
-        <div id="browseMap" class="map"></div>
+      <div class="split-view">
+        <div id="browseBody" class="list-pane empty">Loading events from Supabase...</div>
+        <aside class="map-pane">
+          <div class="map-shell">
+            <div class="map-head"><strong>Browse Map</strong><span id="browseMapNote" class="map-note">Loading venues...</span></div>
+            <div id="browseMap" class="map"></div>
+          </div>
+        </aside>
       </div>
-      <div id="browseBody" class="empty">Loading events from Supabase...</div>
     </section>
     <section id="schedulePanel" class="panel">
       <div class="totals"><span><strong id="scheduleCount">0</strong> shows</span><span><strong id="scheduleCost">£0.00</strong> estimated total</span><button id="clearSchedule">Clear Schedule</button></div>
-      <div class="map-shell">
-        <div class="map-head"><strong>Schedule Map</strong><span id="scheduleMapNote" class="map-note">Add shows to map your route.</span></div>
-        <div id="scheduleMap" class="map"></div>
-        <div id="distanceList" class="distance-list hidden"></div>
+      <div class="split-view">
+        <div id="scheduleBody" class="list-pane empty">Loading schedule...</div>
+        <aside class="map-pane">
+          <div class="map-shell">
+            <div class="map-head"><strong>Schedule Map</strong><span id="scheduleMapNote" class="map-note">Add shows to map your route.</span></div>
+            <div id="scheduleMap" class="map"></div>
+            <div id="distanceList" class="distance-list hidden"></div>
+          </div>
+        </aside>
       </div>
-      <div id="scheduleBody" class="empty">Loading schedule...</div>
     </section>
   </main>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
@@ -166,6 +180,8 @@
     let mapReady = false;
     let browseMapRun = 0;
     let scheduleMapRun = 0;
+    let browseMarkersByKey = new Map();
+    let scheduleMarkersByKey = new Map();
     let geocodeQueue = Promise.resolve();
     const geocodeCacheKey = 'fringeVenueGeocodeCacheV1';
     const edinburghCenter = [55.9533, -3.1883];
@@ -186,6 +202,8 @@
     const venueBase = event => String(event.venue || event.location || '').replace(/\s*\([^)]*\)\s*$/g, '').trim();
     const venueKey = event => `${venueBase(event)}|${event.location || ''}`.toLowerCase();
     const approxWalkMins = km => Math.max(1, Math.round((km * 1.25 / 4.8) * 60));
+    const markerStyle = { radius: 7, color: '#0d6b5f', weight: 2, fillColor: '#0d6b5f', fillOpacity: 0.72 };
+    const markerActiveStyle = { radius: 13, color: '#b92f2f', weight: 4, fillColor: '#e84b92', fillOpacity: 0.92 };
 
     try {
       geocodeCache = JSON.parse(localStorage.getItem(geocodeCacheKey) || '{}');
@@ -287,12 +305,36 @@
       }, 80);
     }
 
+    function setMarkerHighlight(marker, active) {
+      if (!marker) return;
+      marker.setStyle(active ? markerActiveStyle : markerStyle);
+      if (active) marker.bringToFront();
+    }
+
+    function attachMapHover(containerSelector) {
+      document.querySelectorAll(`${containerSelector} [data-map-key]`).forEach(card => {
+        if (card.dataset.mapHoverBound) return;
+        card.dataset.mapHoverBound = 'true';
+        const key = card.dataset.mapKey;
+        const markers = () => containerSelector === '#scheduleBody' ? scheduleMarkersByKey : browseMarkersByKey;
+        card.addEventListener('mouseenter', () => {
+          card.classList.add('map-hover');
+          setMarkerHighlight(markers().get(key), true);
+        });
+        card.addEventListener('mouseleave', () => {
+          card.classList.remove('map-hover');
+          setMarkerHighlight(markers().get(key), false);
+        });
+      });
+    }
+
     async function renderBrowseMap() {
       const run = ++browseMapRun;
       initMaps();
       if (!mapReady) return;
       const venues = uniqueVenues(visibleEvents.slice(0, displayLimit), 80);
       browseLayer.clearLayers();
+      browseMarkersByKey = new Map();
       if (!venues.length) {
         $('browseMapNote').textContent = 'No venues to map.';
         fitMap(browseMap, []);
@@ -300,7 +342,11 @@
       }
       const resolved = await resolveVenues(venues, $('browseMapNote'), 'venues');
       if (run !== browseMapRun) return;
-      resolved.forEach(venue => L.marker([venue.lat, venue.lng]).bindPopup(markerPopup(venue)).addTo(browseLayer));
+      resolved.forEach(venue => {
+        const marker = L.circleMarker([venue.lat, venue.lng], markerStyle).bindPopup(markerPopup(venue)).addTo(browseLayer);
+        browseMarkersByKey.set(venue.key, marker);
+      });
+      attachMapHover('#browseBody');
       $('browseMapNote').textContent = `${resolved.length}/${venues.length} venues mapped from visible results`;
       fitMap(browseMap, resolved);
     }
@@ -312,6 +358,7 @@
       const selected = events.filter(event => scheduleIds.has(event.id)).sort((a,b) => a.date.localeCompare(b.date) || timeToMin(a.start) - timeToMin(b.start));
       const venues = uniqueVenues(selected, 80);
       scheduleLayer.clearLayers();
+      scheduleMarkersByKey = new Map();
       if (scheduleRoute) {
         scheduleMap.removeLayer(scheduleRoute);
         scheduleRoute = null;
@@ -327,8 +374,10 @@
       if (run !== scheduleMapRun) return;
       const byKey = new Map(resolved.map(venue => [venue.key, venue]));
       resolved.forEach((venue, index) => {
-        L.marker([venue.lat, venue.lng]).bindPopup(`<strong>${index + 1}. ${esc(venue.base)}</strong><div class="meta">${esc(venue.events[0].location || '')}</div>${venue.events.slice(0, 5).map(event => `<div>${esc(String(event.start).slice(0,5))} ${esc(event.title)}</div>`).join('')}<a target="_blank" rel="noopener" href="${esc(venue.events[0].maps_search)}">Open in Google Maps</a>`).addTo(scheduleLayer);
+        const marker = L.circleMarker([venue.lat, venue.lng], markerStyle).bindPopup(`<strong>${index + 1}. ${esc(venue.base)}</strong><div class="meta">${esc(venue.events[0].location || '')}</div>${venue.events.slice(0, 5).map(event => `<div>${esc(String(event.start).slice(0,5))} ${esc(event.title)}</div>`).join('')}<a target="_blank" rel="noopener" href="${esc(venue.events[0].maps_search)}">Open in Google Maps</a>`).addTo(scheduleLayer);
+        scheduleMarkersByKey.set(venue.key, marker);
       });
+      attachMapHover('#scheduleBody');
       const routeStops = selected.map(event => {
         const venue = byKey.get(venueKey(event));
         return venue ? { event, venue, lat: venue.lat, lng: venue.lng } : null;
@@ -465,13 +514,14 @@
         renderBrowseMap();
       });
       document.querySelectorAll('.add').forEach(btn => btn.addEventListener('click', () => toggleSchedule(btn.dataset.id)));
+      attachMapHover('#browseBody');
       updateAddButtons();
     }
 
     function renderEvent(event) {
       const added = scheduleIds.has(event.id);
       const tags = [event.category, event.genre].filter(Boolean).map((t,i) => `<span class="tag ${i===0 ? 'cat' : ''}">${esc(t)}</span>`).join(' ');
-      return `<article class="event">
+      return `<article class="event" data-map-key="${esc(venueKey(event))}">
         <div class="start">${esc(String(event.start).slice(0,5))}</div>
         <div><a class="title" target="_blank" rel="noopener" href="${esc(ticketUrl(event))}">${esc(event.title)}</a><div class="meta">${esc(event.company)}</div>${tags}</div>
         <div class="venue"><a target="_blank" rel="noopener" href="${esc(event.maps_search)}">${esc(event.venue || 'Map search')}</a><div class="location">${esc(event.location)}</div></div>
@@ -544,7 +594,7 @@
           const end = start + Number(event.duration_minutes || 60);
           const conflict = selected.some(other => other.id !== event.id && other.date === event.date && start < timeToMin(other.start) + Number(other.duration_minutes || 60) && end > timeToMin(other.start));
           const bought = boughtTickets.get(event.id) === true;
-          return `<article class="schedule-card ${conflict ? 'conflict' : ''} ${bought ? 'bought' : ''}">
+          return `<article class="schedule-card ${conflict ? 'conflict' : ''} ${bought ? 'bought' : ''}" data-map-key="${esc(venueKey(event))}">
             <div class="start">${esc(String(event.start).slice(0,5))}<br><span class="meta">${minToTime(end)}</span></div>
             <div><a class="title" target="_blank" rel="noopener" href="${esc(ticketUrl(event))}">${esc(event.title)}</a><div class="meta">${esc(event.company)}</div><div class="meta">${esc(event.duration || '')} · ${esc(event.price || 'No price listed')} · ${event.signal_score}/5 ${esc(event.signal_label)}${bought ? ' · Ticket bought' : ''}</div>${conflict ? '<div class="conflict">Time clash</div>' : ''}</div>
             <div class="venue"><a target="_blank" rel="noopener" href="${esc(event.maps_search)}">${esc(event.venue || 'Map search')}</a><div class="location">${esc(event.location)}</div></div>
@@ -555,6 +605,7 @@
       }).join('');
       document.querySelectorAll('[data-remove]').forEach(btn => btn.addEventListener('click', () => toggleSchedule(btn.dataset.remove)));
       document.querySelectorAll('[data-bought]').forEach(input => input.addEventListener('change', () => setTicketBought(input.dataset.bought, input.checked)));
+      attachMapHover('#scheduleBody');
       renderScheduleMap();
     }
 
