@@ -6,707 +6,82 @@
   <meta name="robots" content="noindex, nofollow, noarchive">
   <meta name="googlebot" content="noindex, nofollow, noarchive">
   <title>Fringe Planner</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
   <style>
-    :root { --bg:#f7f4ef; --paper:#fffdf8; --ink:#191713; --muted:#68635c; --line:#ddd4c8; --soft:#ece5da; --accent:#b92f2f; --teal:#0d6b5f; --banner:#e84b92; }
-    * { box-sizing:border-box; }
-    body { margin:0; background:var(--bg); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,sans-serif; line-height:1.35; }
-    header { position:sticky; top:0; z-index:5; background:var(--banner); color:white; border-bottom:1px solid rgba(255,255,255,.25); backdrop-filter:blur(10px); }
-    .top { max-width:1180px; margin:0 auto; padding:14px 14px 12px; }
-    h1 { font-size:22px; margin:0 0 4px; }
-    header .sub, header .muted, header label { color:rgba(255,255,255,.88); }
-    .sub,.muted,.meta,.price,.venue,.location,.why,.desc { color:var(--muted); font-size:13px; }
-    .controls { display:grid; grid-template-columns:1.4fr 160px 115px 115px 145px; gap:8px; align-items:end; margin-top:10px; }
-    label { display:grid; gap:4px; font-size:12px; font-weight:700; color:#47413a; }
-    input,select { height:40px; border:1px solid var(--line); border-radius:7px; padding:0 10px; background:white; color:var(--ink); font-size:14px; min-width:0; }
-    .quick,.tabs { display:flex; gap:7px; flex-wrap:wrap; margin-top:10px; }
-    button,.tab { min-height:34px; border:1px solid var(--line); border-radius:7px; padding:0 10px; background:white; color:var(--ink); cursor:pointer; font-size:13px; font-weight:650; }
-    .tab.active { background:var(--accent); border-color:var(--accent); color:white; }
-    .genre-select { position:relative; margin-top:10px; max-width:360px; }
-    .genre-select summary { height:38px; border:1px solid var(--line); background:white; color:var(--ink); border-radius:7px; padding:0 12px; display:flex; align-items:center; justify-content:space-between; cursor:pointer; font-size:13px; }
-    .genre-menu { position:absolute; top:42px; left:0; right:0; max-height:330px; overflow:auto; background:white; border:1px solid var(--line); border-radius:7px; box-shadow:0 14px 28px rgba(20,15,10,.14); padding:8px; z-index:10; }
-    .checkrow { display:flex; gap:8px; align-items:center; padding:7px 6px; border-radius:5px; color:var(--ink); font-size:13px; cursor:pointer; }
-    .checkrow:hover { background:var(--soft); }
-    .checkrow input { accent-color:var(--teal); }
-    main { max-width:1480px; margin:0 auto; padding:14px 14px 56px; }
-    .summary,.totals { display:flex; gap:10px; flex-wrap:wrap; align-items:center; color:var(--muted); font-size:14px; margin-bottom:12px; }
-    .summary strong,.totals strong { color:var(--ink); }
-    .split-view { display:grid; grid-template-columns:minmax(0,58%) minmax(320px,42%); gap:14px; align-items:start; width:100%; overflow:hidden; }
-    .list-pane { min-width:0; max-width:100%; overflow:hidden; }
-    .map-pane { position:sticky; top:142px; min-width:0; }
-    .map-shell { background:var(--paper); border:1px solid var(--line); border-radius:7px; overflow:hidden; margin:0 0 14px; }
-    .map-head { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:9px 10px; border-bottom:1px solid var(--line); }
-    .map-head strong { font-size:14px; }
-    .map-note { color:var(--muted); font-size:12px; }
-    .map { position:relative; height:calc(100vh - 188px); min-height:430px; width:100%; overflow:hidden; background:#f2eadf; touch-action:none; user-select:none; }
-    .map-stage { position:absolute; inset:0; min-width:640px; min-height:430px; transform-origin:0 0; }
-    .map-grid { position:absolute; inset:34px 34px 38px 42px; border:1px solid rgba(25,23,19,.28); background-image:linear-gradient(to right, rgba(25,23,19,.14) 1px, transparent 1px), linear-gradient(to bottom, rgba(25,23,19,.14) 1px, transparent 1px); background-size:calc(100% / 7) calc(100% / 7); }
-    .grid-label { position:absolute; color:#6d6258; font-size:11px; font-weight:800; pointer-events:none; }
-    .map-marker { position:absolute; z-index:2; width:18px; height:18px; border-radius:999px; border:2px solid white; background:var(--teal); box-shadow:0 2px 8px rgba(20,15,10,.25); transform:translate(-50%,-50%); cursor:pointer; padding:0; min-height:0; }
-    .map-marker.active,.map-marker:hover { width:30px; height:30px; background:var(--accent); box-shadow:0 0 0 5px rgba(232,75,146,.18), 0 4px 12px rgba(20,15,10,.3); z-index:4; }
-    .map-marker .number { display:flex; align-items:center; justify-content:center; height:100%; color:white; font-size:10px; font-weight:900; line-height:1; }
-    .map-popup { position:absolute; left:10px; right:10px; bottom:10px; z-index:5; background:rgba(255,253,248,.96); border:1px solid var(--line); border-radius:7px; padding:9px 10px; box-shadow:0 10px 24px rgba(20,15,10,.16); font-size:13px; pointer-events:auto; }
-    .map-popup button { position:absolute; top:6px; right:6px; min-height:24px; width:24px; padding:0; }
-    .map-controls { position:absolute; top:10px; right:10px; z-index:6; display:flex; gap:5px; }
-    .map-controls button { min-height:28px; min-width:30px; padding:0 8px; }
-    .route-svg { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:1; }
-    .distance-list { display:grid; gap:7px; padding:10px; border-top:1px solid var(--line); font-size:13px; color:var(--muted); }
-    .distance-list div { display:flex; justify-content:space-between; gap:12px; border-bottom:1px solid #eee7dd; padding-bottom:7px; }
-    .distance-list div:last-child { border-bottom:0; padding-bottom:0; }
-    .panel { display:none; }
-    .panel.active { display:block; }
-    .dayhead { display:flex; justify-content:space-between; align-items:end; margin:18px 0 9px; border-bottom:2px solid var(--ink); padding-bottom:6px; }
-    h2 { font-size:20px; margin:0; }
-    .slot { display:grid; grid-template-columns:72px minmax(0,1fr); background:var(--paper); border:1px solid var(--line); border-bottom:0; min-width:0; overflow:hidden; }
-    .slot:last-child { border-bottom:1px solid var(--line); }
-    .time { padding:10px; font-weight:850; color:var(--accent); background:#fbf7ef; border-right:1px solid var(--line); font-variant-numeric:tabular-nums; }
-    .event { display:grid; grid-template-columns:58px minmax(220px,1.35fr) minmax(150px,.75fr) 102px 105px 86px; gap:10px; align-items:start; padding:9px 10px; border-bottom:1px solid #eee7dd; }
-    .event > *,.schedule-card > * { min-width:0; overflow-wrap:anywhere; }
-    .event:last-child { border-bottom:0; }
-    .event.map-hover,.schedule-card.map-hover { outline:2px solid var(--accent); outline-offset:-2px; background:#fff8f8; }
-    .start { font-weight:850; font-variant-numeric:tabular-nums; }
-    a { color:var(--teal); text-decoration:none; }
-    a:hover { text-decoration:underline; }
-    .title { color:var(--ink); font-weight:800; }
-    .tag { display:inline-flex; margin-top:4px; padding:2px 6px; border-radius:5px; background:var(--soft); font-size:12px; color:#312e2a; }
-    .cat { background:#e4f0ed; color:#104d45; }
-    .signal { display:inline-flex; gap:5px; align-items:center; padding:4px 7px; border-radius:6px; border:1px solid #e0c072; background:#f5e8c8; color:#2f2410; font-size:12px; font-weight:850; }
-    .add.added { background:var(--teal); color:white; border-color:var(--teal); }
-    .action,.schedule-actions { display:flex; flex-direction:column; gap:6px; align-items:stretch; }
-    .ticket-link { min-height:34px; border:1px solid var(--line); border-radius:7px; padding:8px 10px; background:white; color:var(--teal); font-size:13px; font-weight:750; text-align:center; }
-    .ticket-link:hover { text-decoration:none; background:#f5fbf9; }
-    details { grid-column:2 / -1; color:var(--muted); font-size:13px; }
-    summary { cursor:pointer; color:var(--teal); width:max-content; }
-    .schedule-card { display:grid; grid-template-columns:72px 1fr minmax(150px,.7fr) 116px; gap:10px; background:var(--paper); border:1px solid var(--line); border-radius:7px; padding:10px; margin:8px 0; }
-    .schedule-card.conflict { border-color:#c63838; background:#fff6f4; }
-    .schedule-card.bought { border-color:#78b89f; background:#f3fbf6; }
-    .bought-toggle { display:flex; align-items:center; gap:7px; min-height:34px; border:1px solid var(--line); border-radius:7px; padding:7px 9px; background:white; color:var(--ink); font-size:13px; font-weight:750; }
-    .bought-toggle input,.checkrow input { height:auto; min-width:auto; }
-    .conflict { color:#a42a2a; font-size:12px; font-weight:850; margin-top:3px; }
-    .empty { background:white; border:1px solid var(--line); border-radius:7px; padding:22px; color:var(--muted); }
-    .more-wrap { display:flex; justify-content:center; padding:16px 0 6px; }
-    .more-wrap button { min-width:150px; background:var(--ink); color:white; border-color:var(--ink); }
-    .hidden { display:none !important; }
-    .split-view .event { grid-template-columns:52px minmax(0,1fr) 94px; }
-    .split-view .event .venue,.split-view .event .signalwrap,.split-view .event .price,.split-view .event details { grid-column:2 / -1; }
-    .split-view .event .action { grid-column:3; grid-row:1 / span 3; }
-    .split-view .schedule-card { grid-template-columns:58px minmax(0,1fr) 108px; }
-    .split-view .schedule-card .venue { grid-column:2 / -1; }
-    .split-view .schedule-card .schedule-actions { grid-column:3; grid-row:1 / span 3; }
-    @media (max-width:850px) {
-      header { position:static; }
-      .split-view { grid-template-columns:1fr; }
-      .map-pane { position:static; order:-1; }
-      .controls { grid-template-columns:1fr 1fr; }
-      .controls label:first-child { grid-column:1 / -1; }
-      .slot { grid-template-columns:1fr; }
-      .time { border-right:0; border-bottom:1px solid var(--line); }
-      .event { grid-template-columns:52px 1fr; }
-      .venue,.location,.signalwrap,.price,.action,details { grid-column:2; }
-      .schedule-card { grid-template-columns:58px 1fr; }
-      .schedule-card button,.schedule-card .venue,.schedule-card .schedule-actions { grid-column:2; }
-      .map { height:330px; min-height:330px; }
-      .map-stage { min-width:520px; min-height:330px; }
-      .distance-list div { display:block; }
-    }
-    @media (max-width:540px) {
-      .controls { grid-template-columns:1fr; }
-      h1 { font-size:20px; }
-    }
+    :root{--bg:#f7f4ef;--paper:#fffdf8;--ink:#191713;--muted:#68635c;--line:#ddd4c8;--soft:#ece5da;--accent:#b92f2f;--teal:#0d6b5f;--banner:#e84b92}
+    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,sans-serif;line-height:1.35} header{position:sticky;top:0;z-index:5;background:var(--banner);color:white;border-bottom:1px solid rgba(255,255,255,.25)} .top{max-width:1180px;margin:0 auto;padding:14px} h1{font-size:22px;margin:0 0 4px} header .sub,header label{color:rgba(255,255,255,.88)} .sub,.muted,.meta,.price,.venue,.location,.why,.desc{color:var(--muted);font-size:13px}
+    .controls{display:grid;grid-template-columns:1.4fr 160px 115px 115px 145px;gap:8px;align-items:end;margin-top:10px} label{display:grid;gap:4px;font-size:12px;font-weight:700;color:#47413a} input,select{height:40px;border:1px solid var(--line);border-radius:7px;padding:0 10px;background:white;color:var(--ink);font-size:14px;min-width:0}.quick,.tabs{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}button,.tab{min-height:34px;border:1px solid var(--line);border-radius:7px;padding:0 10px;background:white;color:var(--ink);cursor:pointer;font-size:13px;font-weight:650}.tab.active{background:var(--accent);border-color:var(--accent);color:white}
+    .genre-select{position:relative;margin-top:10px;max-width:360px}.genre-select summary{height:38px;border:1px solid var(--line);background:white;color:var(--ink);border-radius:7px;padding:0 12px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;font-size:13px}.genre-menu{position:absolute;top:42px;left:0;right:0;max-height:330px;overflow:auto;background:white;border:1px solid var(--line);border-radius:7px;box-shadow:0 14px 28px rgba(20,15,10,.14);padding:8px;z-index:10}.checkrow{display:flex;gap:8px;align-items:center;padding:7px 6px;border-radius:5px;color:var(--ink);font-size:13px;cursor:pointer}.checkrow:hover{background:var(--soft)}.checkrow input{height:auto;min-width:auto;accent-color:var(--teal)}
+    main{max-width:1480px;margin:0 auto;padding:14px 14px 56px}.summary,.totals{display:flex;gap:10px;flex-wrap:wrap;align-items:center;color:var(--muted);font-size:14px;margin-bottom:12px}.summary strong,.totals strong{color:var(--ink)}.split-view{display:grid;grid-template-columns:minmax(0,58%) minmax(320px,42%);gap:14px;align-items:start;overflow:hidden}.list-pane{min-width:0;max-width:100%;overflow:hidden}.map-pane{position:sticky;top:142px;min-width:0}.map-shell{background:var(--paper);border:1px solid var(--line);border-radius:7px;overflow:hidden;margin:0 0 14px}.map-head{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 10px;border-bottom:1px solid var(--line)}.map-head strong{font-size:14px}.map-note{color:var(--muted);font-size:12px}.map-controls{display:flex;gap:5px;flex:0 0 auto}.map-controls button{min-height:28px;min-width:30px;padding:0 8px}.map{height:calc(100vh - 188px);min-height:430px;width:100%;background:#ece5da}.leaflet-popup-content{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,sans-serif;font-size:13px}.leaflet-control-attribution{font-size:10px}.distance-list{display:grid;gap:7px;padding:10px;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}.distance-list div{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid #eee7dd;padding-bottom:7px}.distance-list div:last-child{border-bottom:0;padding-bottom:0}
+    .panel{display:none}.panel.active{display:block}.dayhead{display:flex;justify-content:space-between;align-items:end;margin:18px 0 9px;border-bottom:2px solid var(--ink);padding-bottom:6px}h2{font-size:20px;margin:0}.slot{display:grid;grid-template-columns:72px minmax(0,1fr);background:var(--paper);border:1px solid var(--line);border-bottom:0;min-width:0;overflow:hidden}.slot:last-child{border-bottom:1px solid var(--line)}.time{padding:10px;font-weight:850;color:var(--accent);background:#fbf7ef;border-right:1px solid var(--line);font-variant-numeric:tabular-nums}.event{display:grid;grid-template-columns:52px minmax(0,1fr) 104px;gap:10px;align-items:start;padding:9px 10px;border-bottom:1px solid #eee7dd}.event>*,.schedule-card>*{min-width:0;overflow-wrap:anywhere}.event:last-child{border-bottom:0}.event.map-hover,.schedule-card.map-hover{outline:2px solid var(--accent);outline-offset:-2px;background:#fff8f8}.start{font-weight:850;font-variant-numeric:tabular-nums}a{color:var(--teal);text-decoration:none}a:hover{text-decoration:underline}.title{color:var(--ink);font-weight:800}.title-row{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}.title-row .add{flex:0 0 auto;min-width:70px;background:var(--accent);border-color:var(--accent);color:white}.tag{display:inline-flex;margin-top:4px;padding:2px 6px;border-radius:5px;background:var(--soft);font-size:12px;color:#312e2a}.cat{background:#e4f0ed;color:#104d45}.signal{display:inline-flex;gap:5px;align-items:center;padding:4px 7px;border-radius:6px;border:1px solid #e0c072;background:#f5e8c8;color:#2f2410;font-size:12px;font-weight:850}.add.added{background:var(--teal);color:white;border-color:var(--teal)}.action,.schedule-actions{display:flex;flex-direction:column;gap:6px;align-items:stretch}.ticket-link{min-height:34px;border:1px solid var(--line);border-radius:7px;padding:8px 10px;background:white;color:var(--teal);font-size:13px;font-weight:750;text-align:center}.ticket-link:hover{text-decoration:none;background:#f5fbf9}.event .venue,.event .signalwrap,.event .price,.event details{grid-column:2 / -1}.event .action{grid-column:3;grid-row:2 / span 2}details{color:var(--muted);font-size:13px}summary{cursor:pointer;color:var(--teal);width:max-content}.schedule-card{display:grid;grid-template-columns:58px minmax(0,1fr) 108px;gap:10px;background:var(--paper);border:1px solid var(--line);border-radius:7px;padding:10px;margin:8px 0}.schedule-card .venue{grid-column:2 / -1}.schedule-card .schedule-actions{grid-column:3;grid-row:1 / span 3}.schedule-card.conflict{border-color:#c63838;background:#fff6f4}.schedule-card.bought{border-color:#78b89f;background:#f3fbf6}.bought-toggle{display:flex;align-items:center;gap:7px;min-height:34px;border:1px solid var(--line);border-radius:7px;padding:7px 9px;background:white;color:var(--ink);font-size:13px;font-weight:750}.bought-toggle input{height:auto;min-width:auto}.conflict{color:#a42a2a;font-size:12px;font-weight:850;margin-top:3px}.empty{background:white;border:1px solid var(--line);border-radius:7px;padding:22px;color:var(--muted)}.more-wrap{display:flex;justify-content:center;padding:16px 0 6px}.more-wrap button{min-width:150px;background:var(--ink);color:white;border-color:var(--ink)}.hidden{display:none!important}
+    @media(max-width:850px){header{position:static}.split-view{grid-template-columns:1fr}.map-pane{position:static;order:-1}.controls{grid-template-columns:1fr 1fr}.controls label:first-child{grid-column:1 / -1}.slot{grid-template-columns:1fr}.time{border-right:0;border-bottom:1px solid var(--line)}.event{grid-template-columns:52px 1fr}.venue,.location,.signalwrap,.price,.action,details{grid-column:2}.schedule-card{grid-template-columns:58px 1fr}.schedule-card button,.schedule-card .venue,.schedule-card .schedule-actions{grid-column:2}.map{height:330px;min-height:330px}.distance-list div{display:block}}
+    @media(max-width:540px){.controls{grid-template-columns:1fr}h1{font-size:20px}}
   </style>
 </head>
 <body>
-  <header>
-    <div class="top">
-      <h1>Fringe Planner</h1>
-      <div class="sub">Shared schedule for 14-16 August. Events and schedule are loaded from Supabase.</div>
-      <div class="controls">
-        <label>Search <input id="search" type="search" placeholder="Title, artist, venue, genre..."></label>
-        <label>Date <select id="dateFilter"><option value="">All dates</option><option value="2026-08-14" selected>Friday 14 Aug</option><option value="2026-08-15">Saturday 15 Aug</option><option value="2026-08-16">Sunday 16 Aug</option></select></label>
-        <label>From <input id="startAfter" type="time" step="300" value="17:00"></label>
-        <label>To <input id="startBefore" type="time" step="300" value="23:59"></label>
-        <label>Min Signal <select id="minSignal"><option value="">Any</option><option value="5">5/5 must-check</option><option value="4">4/5 high+</option><option value="3">3/5 notable+</option></select></label>
-      </div>
-      <div class="quick">
-        <button data-preset="09:00-12:00">Morning</button>
-        <button data-preset="12:00-17:00">Afternoon</button>
-        <button data-preset="17:00-20:00">5-8pm</button>
-        <button data-preset="20:00-23:59">Late</button>
-        <button id="clearFilters">Clear Filters</button>
-      </div>
-      <div class="genre-select">
-        <details>
-          <summary><span id="genreSummary">Genres: Any</span><span>v</span></summary>
-          <div id="genreMenu" class="genre-menu"></div>
-        </details>
-      </div>
-      <div class="tabs">
-        <button id="browseTab" class="tab active">Browse</button>
-        <button id="scheduleTab" class="tab">My Schedule (0)</button>
-      </div>
-    </div>
-  </header>
-  <main>
-    <section id="browsePanel" class="panel active">
-      <div class="summary"><span><strong id="visibleCount">0</strong> visible events</span><span id="rangeLabel">Loading...</span></div>
-      <div class="split-view">
-        <div id="browseBody" class="list-pane empty">Loading events from Supabase...</div>
-        <aside class="map-pane">
-          <div class="map-shell">
-            <div class="map-head"><strong>Browse Map</strong><span id="browseMapNote" class="map-note">Loading venues...</span></div>
-            <div id="browseMap" class="map"></div>
-          </div>
-        </aside>
-      </div>
-    </section>
-    <section id="schedulePanel" class="panel">
-      <div class="totals"><span><strong id="scheduleCount">0</strong> shows</span><span><strong id="scheduleCost">£0.00</strong> estimated total</span><button id="clearSchedule">Clear Schedule</button></div>
-      <div class="split-view">
-        <div id="scheduleBody" class="list-pane empty">Loading schedule...</div>
-        <aside class="map-pane">
-          <div class="map-shell">
-            <div class="map-head"><strong>Schedule Map</strong><span id="scheduleMapNote" class="map-note">Add shows to map your route.</span></div>
-            <div id="scheduleMap" class="map"></div>
-            <div id="distanceList" class="distance-list hidden"></div>
-          </div>
-        </aside>
-      </div>
-    </section>
-  </main>
-  <script type="module">
-    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-
-    const SUPABASE_URL = 'https://ewiqrnibawljigzooxrn.supabase.co';
-    const SUPABASE_KEY = 'sb_publishable_FJ20NGH-tgVKN6Fx9fEZMA_3rvfapVC';
-    const TRIP_ID = 'fringe-2026';
-    const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-
-    const days = {'2026-08-14':'Friday 14 August','2026-08-15':'Saturday 15 August','2026-08-16':'Sunday 16 August'};
-    let events = [];
-    let scheduleIds = new Set();
-    let boughtTickets = new Map();
-    let activeGenres = new Set();
-    let visibleEvents = [];
-    let displayLimit = 100;
-    let searchTimer;
-    let browseMarkersByKey = new Map();
-    let scheduleMarkersByKey = new Map();
-    const gridCols = ['A','B','C','D','E','F','G'];
-    const gridRows = [1,2,3,4,5,6,7];
-    const gridCellKm = 0.45;
-    const mapState = {
-      browse: { scale: 1, x: 0, y: 0, ready: false },
-      schedule: { scale: 1, x: 0, y: 0, ready: false }
-    };
-
-    const $ = id => document.getElementById(id);
-    const esc = s => String(s ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-    const isTicketColumnError = error => /ticket_bought|column/i.test(String(error?.message || ''));
-    const showSlug = title => String(title || '')
-      .toLowerCase()
-      .replace(/&/g, ' and ')
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '');
-    const ticketUrl = event => String(event.ticket_url || '').trim() || `https://www.edfringe.com/tickets/whats-on/${showSlug(event.title)}`;
-    const timeToMin = t => { const [h,m] = String(t || '00:00').split(':').map(Number); return h * 60 + m; };
-    const minToTime = mins => String(Math.floor(mins/60)).padStart(2,'0') + ':' + String(mins % 60).padStart(2,'0');
-    const money = value => '£' + Number(value || 0).toFixed(2);
-    const venueBase = event => String(event.venue || event.location || '').replace(/\s*\([^)]*\)\s*$/g, '').trim();
-    const venueKey = event => `${venueBase(event)}|${event.location || ''}`.toLowerCase();
-    const approxWalkMins = km => Math.max(1, Math.round((km * 1.25 / 4.8) * 60));
-
-    function gridRef(event) {
-      const match = String(event.location || '').match(/Grid\s+([A-Z])\s*(\d+)/i);
-      if (!match) return null;
-      const col = match[1].toUpperCase();
-      const row = Number(match[2]);
-      if (!gridCols.includes(col) || !gridRows.includes(row)) return null;
-      return { col, row };
-    }
-
-    function venueHash(key) {
-      return [...String(key)].reduce((sum, ch) => ((sum * 31) + ch.charCodeAt(0)) >>> 0, 7);
-    }
-
-    function gridPoint(venue) {
-      const ref = gridRef(venue.events[0]);
-      if (!ref) return null;
-      const hash = venueHash(venue.key);
-      const colIndex = gridCols.indexOf(ref.col);
-      const rowIndex = gridRows.indexOf(ref.row);
-      const jitterX = ((hash % 9) - 4) * 0.55;
-      const jitterY = (((hash >> 4) % 9) - 4) * 0.55;
-      return {
-        x: 42 + ((colIndex + 0.5) / gridCols.length) * (640 - 76) + jitterX,
-        y: 34 + ((rowIndex + 0.5) / gridRows.length) * (430 - 72) + jitterY,
-        ref: `${ref.col}${ref.row}`
-      };
-    }
-
-    function uniqueVenues(sourceEvents, limit = 120) {
-      const venues = new Map();
-      sourceEvents.forEach(event => {
-        const base = venueBase(event);
-        if (!base || !gridRef(event)) return;
-        const key = venueKey(event);
-        if (!venues.has(key)) venues.set(key, { key, base, events: [] });
-        venues.get(key).events.push(event);
-      });
-      return [...venues.values()].slice(0, limit);
-    }
-
-    function mapPopupHtml(venue) {
-      const first = venue.events[0];
-      const shown = venue.events.slice(0, 5).map(event => `<div>${esc(String(event.start).slice(0,5))} ${esc(event.title)}</div>`).join('');
-      const more = venue.events.length > 5 ? `<div class="muted">+${venue.events.length - 5} more</div>` : '';
-      return `<button data-close-popup aria-label="Close">x</button><strong>${esc(venue.base)}</strong><div class="meta">${esc(first.location || '')}</div>${shown}${more}<a target="_blank" rel="noopener" href="${esc(first.maps_search)}">Open in Google Maps</a>`;
-    }
-
-    function distanceKm(a, b) {
-      return Math.hypot(a.x - b.x, a.y - b.y) / ((640 - 76) / gridCols.length) * gridCellKm;
-    }
-
-    function applyMapTransform(scope) {
-      const map = $(`${scope}Map`);
-      const stage = map?.querySelector('.map-stage');
-      const state = mapState[scope];
-      if (stage) stage.style.transform = `translate(${state.x}px, ${state.y}px) scale(${state.scale})`;
-    }
-
-    function setMarkerHighlight(marker, active) {
-      if (!marker) return;
-      marker.classList.toggle('active', active);
-    }
-
-    function attachMapHover(containerSelector) {
-      document.querySelectorAll(`${containerSelector} [data-map-key]`).forEach(card => {
-        if (card.dataset.mapHoverBound) return;
-        card.dataset.mapHoverBound = 'true';
-        const key = card.dataset.mapKey;
-        const markers = () => containerSelector === '#scheduleBody' ? scheduleMarkersByKey : browseMarkersByKey;
-        card.addEventListener('mouseenter', () => {
-          card.classList.add('map-hover');
-          setMarkerHighlight(markers().get(key), true);
-        });
-        card.addEventListener('mouseleave', () => {
-          card.classList.remove('map-hover');
-          setMarkerHighlight(markers().get(key), false);
-        });
-      });
-    }
-
-    function mapShell(scope, venues, routeStops = []) {
-      const markers = [];
-      const markerMap = new Map();
-      venues.forEach((venue, index) => {
-        const point = gridPoint(venue);
-        if (!point) return;
-        const marker = `<button class="map-marker" data-map-key="${esc(venue.key)}" data-popup="${esc(mapPopupHtml(venue))}" style="left:${point.x}px;top:${point.y}px" title="${esc(venue.base + ' · Grid ' + point.ref)}"><span class="number">${routeStops.length ? index + 1 : ''}</span></button>`;
-        markers.push(marker);
-        markerMap.set(venue.key, { venue, point });
-      });
-      const colLabels = gridCols.map((col, i) => `<span class="grid-label" style="left:${42 + ((i + .5) / gridCols.length) * (640 - 76)}px;top:10px">${col}</span>`).join('');
-      const rowLabels = gridRows.map((row, i) => `<span class="grid-label" style="left:14px;top:${34 + ((i + .5) / gridRows.length) * (430 - 72)}px">${row}</span>`).join('');
-      const routePoints = routeStops.map(stop => markerMap.get(venueKey(stop.event))?.point).filter(Boolean);
-      const route = routePoints.length > 1 ? `<svg class="route-svg" viewBox="0 0 640 430" preserveAspectRatio="none"><polyline points="${routePoints.map(p => `${p.x},${p.y}`).join(' ')}" fill="none" stroke="#b92f2f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>` : '';
-      return `<div class="map-controls"><button data-map-zoom="${scope}:in">+</button><button data-map-zoom="${scope}:out">-</button><button data-map-zoom="${scope}:reset">Reset</button></div><div class="map-stage">${colLabels}${rowLabels}<div class="map-grid"></div>${route}${markers.join('')}</div>`;
-    }
-
-    function setupMapInteraction(scope) {
-      const map = $(`${scope}Map`);
-      if (!map || mapState[scope].ready) return;
-      mapState[scope].ready = true;
-      let dragging = false;
-      let last = null;
-      const pointerPoint = event => ({ x: event.clientX, y: event.clientY });
-      map.addEventListener('pointerdown', event => {
-        if (event.target.closest('button,a')) return;
-        dragging = true;
-        last = pointerPoint(event);
-        map.setPointerCapture(event.pointerId);
-        map.classList.add('dragging');
-      });
-      map.addEventListener('pointermove', event => {
-        if (!dragging || !last) return;
-        const next = pointerPoint(event);
-        mapState[scope].x += next.x - last.x;
-        mapState[scope].y += next.y - last.y;
-        last = next;
-        applyMapTransform(scope);
-      });
-      map.addEventListener('pointerup', event => {
-        dragging = false;
-        last = null;
-        map.classList.remove('dragging');
-        try { map.releasePointerCapture(event.pointerId); } catch {}
-      });
-      map.addEventListener('wheel', event => {
-        event.preventDefault();
-        const factor = event.deltaY < 0 ? 1.12 : 0.88;
-        mapState[scope].scale = Math.min(2.3, Math.max(0.72, mapState[scope].scale * factor));
-        applyMapTransform(scope);
-      }, { passive: false });
-      map.addEventListener('click', event => {
-        const zoom = event.target.closest('[data-map-zoom]');
-        if (zoom) {
-          const action = zoom.dataset.mapZoom.split(':')[1];
-          if (action === 'reset') mapState[scope] = { ...mapState[scope], scale: 1, x: 0, y: 0, ready: true };
-          if (action === 'in') mapState[scope].scale = Math.min(2.3, mapState[scope].scale * 1.18);
-          if (action === 'out') mapState[scope].scale = Math.max(0.72, mapState[scope].scale * 0.84);
-          applyMapTransform(scope);
-          return;
-        }
-        const close = event.target.closest('[data-close-popup]');
-        if (close) {
-          close.closest('.map-popup')?.remove();
-          return;
-        }
-        const marker = event.target.closest('.map-marker');
-        if (!marker) return;
-        map.querySelector('.map-popup')?.remove();
-        map.insertAdjacentHTML('beforeend', `<div class="map-popup">${marker.dataset.popup}</div>`);
-      });
-    }
-
-    function hydrateMapMarkers(scope) {
-      const markerMap = scope === 'schedule' ? scheduleMarkersByKey : browseMarkersByKey;
-      markerMap.clear();
-      document.querySelectorAll(`#${scope}Map .map-marker`).forEach(marker => {
-        markerMap.set(marker.dataset.mapKey, marker);
-        marker.addEventListener('mouseenter', () => {
-          marker.classList.add('active');
-          document.querySelectorAll(`[data-map-key="${CSS.escape(marker.dataset.mapKey)}"]`).forEach(card => card.classList.add('map-hover'));
-        });
-        marker.addEventListener('mouseleave', () => {
-          marker.classList.remove('active');
-          document.querySelectorAll(`[data-map-key="${CSS.escape(marker.dataset.mapKey)}"]`).forEach(card => card.classList.remove('map-hover'));
-        });
-      });
-    }
-
-    function renderBrowseMap() {
-      setupMapInteraction('browse');
-      const venues = uniqueVenues(visibleEvents.slice(0, displayLimit), 120);
-      $('browseMap').innerHTML = mapShell('browse', venues);
-      applyMapTransform('browse');
-      browseMarkersByKey = new Map();
-      hydrateMapMarkers('browse');
-      attachMapHover('#browseBody');
-      $('browseMapNote').textContent = venues.length ? `${venues.length} grid venues from visible results` : 'No grid venues in current results.';
-    }
-
-    function renderScheduleMap() {
-      setupMapInteraction('schedule');
-      const selected = events.filter(event => scheduleIds.has(event.id)).sort((a,b) => a.date.localeCompare(b.date) || timeToMin(a.start) - timeToMin(b.start));
-      const venues = uniqueVenues(selected, 120);
-      const routeStops = selected.map(event => ({ event })).filter(stop => venues.some(venue => venue.key === venueKey(stop.event)));
-      $('scheduleMap').innerHTML = mapShell('schedule', venues, routeStops);
-      applyMapTransform('schedule');
-      scheduleMarkersByKey = new Map();
-      hydrateMapMarkers('schedule');
-      attachMapHover('#scheduleBody');
-      $('distanceList').classList.add('hidden');
-      $('distanceList').innerHTML = '';
-      if (!venues.length) {
-        $('scheduleMapNote').textContent = 'Add shows to map your route.';
-        return;
-      }
-      const byKey = new Map(venues.map(venue => [venue.key, { venue, point: gridPoint(venue) }]));
-      const ordered = selected.map(event => {
-        const item = byKey.get(venueKey(event));
-        return item ? { event, ...item } : null;
-      }).filter(Boolean);
-      const legs = [];
-      for (let i = 1; i < ordered.length; i += 1) {
-        const a = ordered[i - 1];
-        const b = ordered[i];
-        if (a.venue.key === b.venue.key) continue;
-        const km = distanceKm(a.point, b.point);
-        legs.push(`<div><span>${esc(a.event.title)} -> ${esc(b.event.title)}</span><strong>~${km.toFixed(1)} km · ~${approxWalkMins(km)} min walk</strong></div>`);
-      }
-      if (legs.length) {
-        $('distanceList').innerHTML = legs.join('');
-        $('distanceList').classList.remove('hidden');
-      }
-      $('scheduleMapNote').textContent = `${venues.length} grid stops mapped`;
-    }
-
-    async function fetchAllEvents() {
-      const pageSize = 1000;
-      let from = 0;
-      let all = [];
-      while (true) {
-        const { data, error } = await supabase
-          .from('events')
-          .select('*')
-          .order('date', { ascending: true })
-          .order('start', { ascending: true })
-          .range(from, from + pageSize - 1);
-        if (error) throw error;
-        all = all.concat(data || []);
-        if (!data || data.length < pageSize) break;
-        from += pageSize;
-      }
-      events = all;
-      buildGenreMenu();
-      applyFilters();
-    }
-
-    async function fetchSchedule() {
-      let { data, error } = await supabase.from('schedule_items').select('event_id,ticket_bought').eq('trip_id', TRIP_ID);
-      if (error && isTicketColumnError(error)) {
-        ({ data, error } = await supabase.from('schedule_items').select('event_id').eq('trip_id', TRIP_ID));
-      }
-      if (error) throw error;
-      scheduleIds = new Set((data || []).map(row => row.event_id));
-      boughtTickets = new Map((data || []).map(row => [row.event_id, Boolean(row.ticket_bought)]));
-      renderSchedule();
-      updateAddButtons();
-    }
-
-    function buildGenreMenu() {
-      const counts = new Map();
-      const add = value => {
-        const v = String(value || '').trim();
-        if (v.length >= 3 && v.length <= 34) counts.set(v, (counts.get(v) || 0) + 1);
-      };
-      events.forEach(event => {
-        add(event.category);
-        String(event.genre || '').split(/[,/]/).forEach(add);
-      });
-      const options = [...counts.entries()].sort((a,b) => b[1] - a[1]).slice(0, 48).map(([name]) => name);
-      $('genreMenu').innerHTML = options.map(name => `<label class="checkrow"><input class="genrecheck" type="checkbox" value="${esc(name)}"> <span>${esc(name)}</span></label>`).join('');
-      document.querySelectorAll('.genrecheck').forEach(input => input.addEventListener('change', () => {
-        if (input.checked) activeGenres.add(input.value);
-        else activeGenres.delete(input.value);
-        updateGenreSummary();
-        displayLimit = 100;
-        applyFilters();
-      }));
-    }
-
-    function updateGenreSummary() {
-      $('genreSummary').textContent = activeGenres.size === 0 ? 'Genres: Any' : activeGenres.size === 1 ? [...activeGenres][0] : `${activeGenres.size} genres selected`;
-    }
-
-    function eventTags(event) {
-      return [event.category, ...String(event.genre || '').split(/[,/]/)].map(s => String(s || '').trim()).filter(Boolean);
-    }
-
-    function applyFilters() {
-      const q = $('search').value.trim().toLowerCase();
-      const date = $('dateFilter').value;
-      const from = $('startAfter').value ? timeToMin($('startAfter').value) : 0;
-      const to = $('startBefore').value ? timeToMin($('startBefore').value) : 1439;
-      const minSignal = Number($('minSignal').value || 0);
-      visibleEvents = events.filter(event => {
-        const startMin = timeToMin(event.start);
-        const hay = [event.title,event.company,event.category,event.genre,event.venue,event.location,event.description,event.signal_label,event.signal_reasons].join(' ').toLowerCase();
-        const tags = eventTags(event);
-        return (!date || event.date === date)
-          && startMin >= from
-          && startMin <= to
-          && Number(event.signal_score || 0) >= minSignal
-          && (!activeGenres.size || [...activeGenres].some(g => tags.includes(g)))
-          && (!q || hay.includes(q));
-      });
-      $('visibleCount').textContent = visibleEvents.length.toLocaleString();
-      const bits = [];
-      if (date) bits.push(days[date]);
-      bits.push(`${$('startAfter').value || '00:00'}-${$('startBefore').value || '23:59'}`);
-      if (activeGenres.size) bits.push([...activeGenres].join(', '));
-      if (minSignal) bits.push(`${minSignal}/5+ signal`);
-      if (q) bits.push(`"${q}"`);
-      $('rangeLabel').textContent = bits.join(' · ');
-      renderBrowse();
-      renderBrowseMap();
-    }
-
-    function renderBrowse() {
-      if (!visibleEvents.length) {
-        $('browseBody').className = 'empty';
-        $('browseBody').innerHTML = 'No events match the current filters.';
-        return;
-      }
-      $('browseBody').className = '';
-      const renderedEvents = visibleEvents.slice(0, displayLimit);
-      const hiddenCount = Math.max(visibleEvents.length - renderedEvents.length, 0);
-      const byDay = groupBy(renderedEvents, e => e.date);
-      $('browseBody').innerHTML = Object.keys(byDay).sort().map(date => {
-        const byBucket = groupBy(byDay[date], e => e.bucket || e.start?.slice(0,5) || '00:00');
-        return `<section><div class="dayhead"><h2>${days[date] || date}</h2><div class="muted">${byDay[date].length.toLocaleString()} events</div></div>` +
-          Object.keys(byBucket).sort().map(bucket => `<div class="slot"><div class="time">${esc(String(bucket).slice(0,5))}</div><div>${byBucket[bucket].map(renderEvent).join('')}</div></div>`).join('') +
-          `</section>`;
-      }).join('') + (hiddenCount ? `<div class="more-wrap"><button id="showMore">Show 100 more (${hiddenCount.toLocaleString()} hidden)</button></div>` : '');
-      $('showMore')?.addEventListener('click', () => {
-        displayLimit += 100;
-        renderBrowse();
-        renderBrowseMap();
-      });
-      document.querySelectorAll('.add').forEach(btn => btn.addEventListener('click', () => toggleSchedule(btn.dataset.id)));
-      attachMapHover('#browseBody');
-      updateAddButtons();
-    }
-
-    function renderEvent(event) {
-      const added = scheduleIds.has(event.id);
-      const tags = [event.category, event.genre].filter(Boolean).map((t,i) => `<span class="tag ${i===0 ? 'cat' : ''}">${esc(t)}</span>`).join(' ');
-      return `<article class="event" data-map-key="${esc(venueKey(event))}">
-        <div class="start">${esc(String(event.start).slice(0,5))}</div>
-        <div><a class="title" target="_blank" rel="noopener" href="${esc(ticketUrl(event))}">${esc(event.title)}</a><div class="meta">${esc(event.company)}</div>${tags}</div>
-        <div class="venue"><a target="_blank" rel="noopener" href="${esc(event.maps_search)}">${esc(event.venue || 'Map search')}</a><div class="location">${esc(event.location)}</div></div>
-        <div class="signalwrap"><div class="signal">${Number(event.signal_score || 0)}/5 ${esc(event.signal_label)}</div><div class="why">${esc(event.signal_reasons)}</div></div>
-        <div class="price">${esc([event.duration, event.price].filter(Boolean).join(' '))}</div>
-        <div class="action"><button class="add ${added ? 'added' : ''}" data-id="${esc(event.id)}">${added ? 'Added' : 'Add'}</button><a class="ticket-link" target="_blank" rel="noopener" href="${esc(ticketUrl(event))}">Box office</a></div>
-        ${event.description ? `<details><summary>Description</summary><div class="desc">${esc(event.description)}</div></details>` : ''}
-      </article>`;
-    }
-
-    async function toggleSchedule(eventId) {
-      if (scheduleIds.has(eventId)) {
-        const { error } = await supabase.from('schedule_items').delete().eq('trip_id', TRIP_ID).eq('event_id', eventId);
-        if (error) return alert(error.message);
-        scheduleIds.delete(eventId);
-        boughtTickets.delete(eventId);
-      } else {
-        let { error } = await supabase.from('schedule_items').insert({ trip_id: TRIP_ID, event_id: eventId, ticket_bought: false });
-        if (error && isTicketColumnError(error)) {
-          ({ error } = await supabase.from('schedule_items').insert({ trip_id: TRIP_ID, event_id: eventId }));
-        }
-        if (error && !String(error.message).includes('duplicate')) return alert(error.message);
-        scheduleIds.add(eventId);
-        boughtTickets.set(eventId, false);
-      }
-      renderSchedule();
-      updateAddButtons();
-    }
-
-    async function setTicketBought(eventId, bought) {
-      boughtTickets.set(eventId, bought);
-      renderSchedule();
-      const { error } = await supabase
-        .from('schedule_items')
-        .update({ ticket_bought: bought })
-        .eq('trip_id', TRIP_ID)
-        .eq('event_id', eventId);
-      if (error) {
-        boughtTickets.set(eventId, !bought);
-        renderSchedule();
-        alert(isTicketColumnError(error) ? 'Run the Supabase ticket_bought migration first, then try again.' : error.message);
-      }
-    }
-
-    function updateAddButtons() {
-      document.querySelectorAll('.add').forEach(btn => {
-        const added = scheduleIds.has(btn.dataset.id);
-        btn.classList.toggle('added', added);
-        btn.textContent = added ? 'Added' : 'Add';
-      });
-      $('scheduleTab').textContent = `My Schedule (${scheduleIds.size})`;
-    }
-
-    function renderSchedule() {
-      const selected = events.filter(event => scheduleIds.has(event.id)).sort((a,b) => a.date.localeCompare(b.date) || timeToMin(a.start) - timeToMin(b.start));
-      const total = selected.reduce((sum, event) => sum + Number(event.price_amount || 0), 0);
-      $('scheduleCount').textContent = selected.length.toLocaleString();
-      $('scheduleCost').textContent = money(total);
-      if (!selected.length) {
-        $('scheduleBody').className = 'empty';
-        $('scheduleBody').innerHTML = 'Your shared schedule is empty. Add shows from Browse.';
-        renderScheduleMap();
-        return;
-      }
-      $('scheduleBody').className = '';
-      const byDay = groupBy(selected, e => e.date);
-      $('scheduleBody').innerHTML = Object.keys(byDay).sort().map(date => {
-        const cards = byDay[date].map(event => {
-          const start = timeToMin(event.start);
-          const end = start + Number(event.duration_minutes || 60);
-          const conflict = selected.some(other => other.id !== event.id && other.date === event.date && start < timeToMin(other.start) + Number(other.duration_minutes || 60) && end > timeToMin(other.start));
-          const bought = boughtTickets.get(event.id) === true;
-          return `<article class="schedule-card ${conflict ? 'conflict' : ''} ${bought ? 'bought' : ''}" data-map-key="${esc(venueKey(event))}">
-            <div class="start">${esc(String(event.start).slice(0,5))}<br><span class="meta">${minToTime(end)}</span></div>
-            <div><a class="title" target="_blank" rel="noopener" href="${esc(ticketUrl(event))}">${esc(event.title)}</a><div class="meta">${esc(event.company)}</div><div class="meta">${esc(event.duration || '')} · ${esc(event.price || 'No price listed')} · ${event.signal_score}/5 ${esc(event.signal_label)}${bought ? ' · Ticket bought' : ''}</div>${conflict ? '<div class="conflict">Time clash</div>' : ''}</div>
-            <div class="venue"><a target="_blank" rel="noopener" href="${esc(event.maps_search)}">${esc(event.venue || 'Map search')}</a><div class="location">${esc(event.location)}</div></div>
-            <div class="schedule-actions"><label class="bought-toggle"><input type="checkbox" data-bought="${esc(event.id)}" ${bought ? 'checked' : ''}> Bought</label><a class="ticket-link" target="_blank" rel="noopener" href="${esc(ticketUrl(event))}">Box office</a><button data-remove="${esc(event.id)}">Remove</button></div>
-          </article>`;
-        }).join('');
-        return `<section><div class="dayhead"><h2>${days[date] || date}</h2><div class="muted">${byDay[date].length} shows</div></div>${cards}</section>`;
-      }).join('');
-      document.querySelectorAll('[data-remove]').forEach(btn => btn.addEventListener('click', () => toggleSchedule(btn.dataset.remove)));
-      document.querySelectorAll('[data-bought]').forEach(input => input.addEventListener('change', () => setTicketBought(input.dataset.bought, input.checked)));
-      attachMapHover('#scheduleBody');
-      renderScheduleMap();
-    }
-
-    function groupBy(items, getKey) {
-      return items.reduce((acc, item) => {
-        const key = getKey(item);
-        (acc[key] ||= []).push(item);
-        return acc;
-      }, {});
-    }
-
-    function showTab(name) {
-      const schedule = name === 'schedule';
-      $('browsePanel').classList.toggle('active', !schedule);
-      $('schedulePanel').classList.toggle('active', schedule);
-      $('browseTab').classList.toggle('active', !schedule);
-      $('scheduleTab').classList.toggle('active', schedule);
-      setTimeout(() => applyMapTransform(schedule ? 'schedule' : 'browse'), 80);
-    }
-
-    const resetAndApply = () => { displayLimit = 100; applyFilters(); };
-    $('search').addEventListener('input', () => {
-      clearTimeout(searchTimer);
-      searchTimer = setTimeout(resetAndApply, 180);
-    });
-    $('dateFilter').addEventListener('change', resetAndApply);
-    $('startAfter').addEventListener('change', resetAndApply);
-    $('startBefore').addEventListener('change', resetAndApply);
-    $('minSignal').addEventListener('change', resetAndApply);
-    $('browseTab').addEventListener('click', () => showTab('browse'));
-    $('scheduleTab').addEventListener('click', () => { renderSchedule(); showTab('schedule'); });
-    $('clearFilters').addEventListener('click', () => {
-      $('search').value = '';
-      $('dateFilter').value = '';
-      $('startAfter').value = '';
-      $('startBefore').value = '';
-      $('minSignal').value = '';
-      activeGenres = new Set();
-      document.querySelectorAll('.genrecheck').forEach(input => input.checked = false);
-      updateGenreSummary();
-      displayLimit = 100;
-      applyFilters();
-    });
-    document.querySelectorAll('[data-preset]').forEach(btn => btn.addEventListener('click', () => {
-      const [from, to] = btn.dataset.preset.split('-');
-      $('startAfter').value = from;
-      $('startBefore').value = to;
-      displayLimit = 100;
-      applyFilters();
-    }));
-    $('clearSchedule').addEventListener('click', async () => {
-      if (!confirm('Clear the shared schedule?')) return;
-      const { error } = await supabase.from('schedule_items').delete().eq('trip_id', TRIP_ID);
-      if (error) alert(error.message);
-      scheduleIds = new Set();
-      boughtTickets = new Map();
-      renderSchedule();
-      updateAddButtons();
-    });
-
-    supabase.channel('shared-schedule')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'schedule_items', filter: `trip_id=eq.${TRIP_ID}` }, fetchSchedule)
-      .subscribe();
-
-    try {
-      await fetchAllEvents();
-      await fetchSchedule();
-    } catch (error) {
-      console.error(error);
-      $('browseBody').className = 'empty';
-      $('browseBody').innerHTML = `Could not load Supabase data: ${esc(error.message)}`;
-    }
-  </script>
+<header><div class="top"><h1>Fringe Planner</h1><div class="sub">Shared schedule for 14-16 August. Events and schedule are loaded from Supabase.</div><div class="controls"><label>Search <input id="search" type="search" placeholder="Title, artist, venue, genre..."></label><label>Date <select id="dateFilter"><option value="">All dates</option><option value="2026-08-14" selected>Friday 14 Aug</option><option value="2026-08-15">Saturday 15 Aug</option><option value="2026-08-16">Sunday 16 Aug</option></select></label><label>From <input id="startAfter" type="time" step="300" value="17:00"></label><label>To <input id="startBefore" type="time" step="300" value="23:59"></label><label>Min Signal <select id="minSignal"><option value="">Any</option><option value="5">5/5 must-check</option><option value="4">4/5 high+</option><option value="3">3/5 notable+</option></select></label></div><div class="quick"><button data-preset="09:00-12:00">Morning</button><button data-preset="12:00-17:00">Afternoon</button><button data-preset="17:00-20:00">5-8pm</button><button data-preset="20:00-23:59">Late</button><button id="clearFilters">Clear Filters</button></div><div class="genre-select"><details><summary><span id="genreSummary">Genres: Any</span><span>v</span></summary><div id="genreMenu" class="genre-menu"></div></details></div><div class="tabs"><button id="browseTab" class="tab active">Browse</button><button id="scheduleTab" class="tab">My Schedule (0)</button></div></div></header>
+<main><section id="browsePanel" class="panel active"><div class="summary"><span><strong id="visibleCount">0</strong> visible events</span><span id="rangeLabel">Loading...</span></div><div class="split-view"><div id="browseBody" class="list-pane empty">Loading events from Supabase...</div><aside class="map-pane"><div class="map-shell"><div class="map-head"><div><strong>Browse Map</strong><span id="browseMapNote" class="map-note"> Loading venues...</span></div><div class="map-controls"><button data-map-zoom="browse:in">+</button><button data-map-zoom="browse:out">-</button><button data-map-zoom="browse:reset">Reset</button></div></div><div id="browseMap" class="map"></div></div></aside></div></section><section id="schedulePanel" class="panel"><div class="totals"><span><strong id="scheduleCount">0</strong> shows</span><span><strong id="scheduleCost">GBP 0.00</strong> estimated total</span><button id="clearSchedule">Clear Schedule</button></div><div class="split-view"><div id="scheduleBody" class="list-pane empty">Loading schedule...</div><aside class="map-pane"><div class="map-shell"><div class="map-head"><div><strong>Schedule Map</strong><span id="scheduleMapNote" class="map-note"> Add shows to map your route.</span></div><div class="map-controls"><button data-map-zoom="schedule:in">+</button><button data-map-zoom="schedule:out">-</button><button data-map-zoom="schedule:reset">Reset</button></div></div><div id="scheduleMap" class="map"></div><div id="distanceList" class="distance-list hidden"></div></div></aside></div></section></main>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script type="module">
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+const SUPABASE_URL='https://ewiqrnibawljigzooxrn.supabase.co';
+const SUPABASE_KEY='sb_publishable_FJ20NGH-tgVKN6Fx9fEZMA_3rvfapVC';
+const TRIP_ID='fringe-2026';
+const supabase=createClient(SUPABASE_URL,SUPABASE_KEY);
+const days={'2026-08-14':'Friday 14 August','2026-08-15':'Saturday 15 August','2026-08-16':'Sunday 16 August'};
+let events=[],scheduleIds=new Set(),boughtTickets=new Map(),activeGenres=new Set(),visibleEvents=[],displayLimit=100,searchTimer;
+let browseMap,scheduleMap,browseLayer,scheduleLayer,scheduleRoute,mapReady=false,browseMapRun=0,scheduleMapRun=0;
+let browseMarkersByKey=new Map(),scheduleMarkersByKey=new Map(),geocodeQueue=Promise.resolve();
+const edinburghCenter=[55.9533,-3.1883],geocodeCacheKey='fringeVenueGeocodeCacheV3';
+let geocodeCache={};try{geocodeCache=JSON.parse(localStorage.getItem(geocodeCacheKey)||'{}')}catch{geocodeCache={}}
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+const isTicketColumnError=error=>/ticket_bought|column/i.test(String(error?.message||''));
+const showSlug=title=>String(title||'').toLowerCase().replace(/&/g,' and ').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+const ticketUrl=event=>String(event.ticket_url||'').trim()||`https://www.edfringe.com/tickets/whats-on/${showSlug(event.title)}`;
+const timeToMin=t=>{const[h,m]=String(t||'00:00').split(':').map(Number);return h*60+m};
+const minToTime=mins=>String(Math.floor(mins/60)).padStart(2,'0')+':'+String(mins%60).padStart(2,'0');
+const money=value=>'GBP '+Number(value||0).toFixed(2);
+const venueBase=event=>String(event.venue||event.location||'').replace(/\s*\([^)]*\)\s*$/g,'').trim();
+const venueKey=event=>`${venueBase(event)}|${event.location||''}`.toLowerCase();
+const approxWalkMins=km=>Math.max(1,Math.round((km*1.25/4.8)*60));
+const markerStyle={radius:7,color:'#0d6b5f',weight:2,fillColor:'#0d6b5f',fillOpacity:.72};
+const markerActiveStyle={radius:13,color:'#b92f2f',weight:4,fillColor:'#e84b92',fillOpacity:.92};
+function venueAddress(event){return[event.venue_address,event.venue_postcode].map(v=>String(v||'').trim()).filter(Boolean).join(', ')}
+function mapsUrl(event){const query=venueAddress(event)||[event.venue,'Edinburgh'].filter(Boolean).join(' ');return query?`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`:event.maps_search}
+function hasExactCoords(event){return Number.isFinite(Number(event.venue_lat))&&Number.isFinite(Number(event.venue_lng))}
+function initMaps(){if(mapReady)return;if(!window.L){$('browseMapNote').textContent=' Map library could not load.';$('scheduleMapNote').textContent=' Map library could not load.';return}browseMap=L.map('browseMap',{zoomControl:false}).setView(edinburghCenter,13);scheduleMap=L.map('scheduleMap',{zoomControl:false}).setView(edinburghCenter,13);[browseMap,scheduleMap].forEach(map=>{L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(map)});browseLayer=L.layerGroup().addTo(browseMap);scheduleLayer=L.layerGroup().addTo(scheduleMap);mapReady=true}
+function uniqueVenues(sourceEvents,limit=120){const venues=new Map();sourceEvents.forEach(event=>{const base=venueBase(event);if(!base)return;const key=venueKey(event);if(!venues.has(key))venues.set(key,{key,base,events:[]});venues.get(key).events.push(event)});return[...venues.values()].slice(0,limit)}
+function geocodeQuery(venue){const first=venue.events[0];return venueAddress(first)||`${venue.base}, Edinburgh, Scotland`}
+async function resolveVenue(venue){const first=venue.events[0];if(hasExactCoords(first))return{...venue,lat:Number(first.venue_lat),lng:Number(first.venue_lng),exact:true};const query=geocodeQuery(venue);const cacheKey=`${venue.key}|${query}`.toLowerCase();if(geocodeCache[cacheKey])return{...venue,...geocodeCache[cacheKey],exact:false};geocodeQueue=geocodeQueue.then(async()=>{if(geocodeCache[cacheKey])return geocodeCache[cacheKey];const response=await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`);if(!response.ok)return null;const results=await response.json();const firstResult=results&&results[0];if(!firstResult)return null;const coords={lat:Number(firstResult.lat),lng:Number(firstResult.lon)};geocodeCache[cacheKey]=coords;localStorage.setItem(geocodeCacheKey,JSON.stringify(geocodeCache));await new Promise(resolve=>setTimeout(resolve,900));return coords}).catch(()=>null);const coords=await geocodeQueue;return coords?{...venue,...coords,exact:false}:null}
+async function resolveVenues(venues,noteEl,label){let mapped=0;noteEl.textContent=` Locating ${venues.length} ${label}...`;const resolved=[];for(const venue of venues){const result=await resolveVenue(venue);if(result){mapped+=1;resolved.push(result);noteEl.textContent=` Mapped ${mapped}/${venues.length} ${label}`}}return resolved}
+function mapPopupHtml(venue){const first=venue.events[0];const shown=venue.events.slice(0,5).map(event=>`<div>${esc(String(event.start).slice(0,5))} ${esc(event.title)}</div>`).join('');const more=venue.events.length>5?`<div class="muted">+${venue.events.length-5} more</div>`:'';const address=venueAddress(first);return`<strong>${esc(venue.base)}</strong><div class="meta">${esc([first.location,address].filter(Boolean).join(' / '))}</div>${shown}${more}<a target="_blank" rel="noopener" href="${esc(mapsUrl(first))}">Open in Google Maps</a>`}
+function distanceKm(a,b){const rad=Math.PI/180,dLat=(b.lat-a.lat)*rad,dLng=(b.lng-a.lng)*rad,lat1=a.lat*rad,lat2=b.lat*rad;const h=Math.sin(dLat/2)**2+Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLng/2)**2;return 6371*2*Math.atan2(Math.sqrt(h),Math.sqrt(1-h))}
+function fitMap(map,points){setTimeout(()=>{map.invalidateSize();if(!points.length)map.setView(edinburghCenter,13);else map.fitBounds(points.map(p=>[p.lat,p.lng]),{padding:[28,28],maxZoom:16})},80)}
+function setMarkerHighlight(marker,active){if(!marker)return;marker.setStyle(active?markerActiveStyle:markerStyle);if(active)marker.bringToFront()}
+function attachMapHover(containerSelector){document.querySelectorAll(`${containerSelector} [data-map-key]`).forEach(card=>{if(card.dataset.mapHoverBound)return;card.dataset.mapHoverBound='true';const key=card.dataset.mapKey;const markers=()=>containerSelector==='#scheduleBody'?scheduleMarkersByKey:browseMarkersByKey;card.addEventListener('mouseenter',()=>{card.classList.add('map-hover');setMarkerHighlight(markers().get(key),true)});card.addEventListener('mouseleave',()=>{card.classList.remove('map-hover');setMarkerHighlight(markers().get(key),false)})})}
+async function renderBrowseMap(){const run=++browseMapRun;initMaps();if(!mapReady)return;const venues=uniqueVenues(visibleEvents.slice(0,displayLimit),120);browseLayer.clearLayers();browseMarkersByKey=new Map();if(!venues.length){$('browseMapNote').textContent=' No venues to map.';fitMap(browseMap,[]);return}const resolved=await resolveVenues(venues,$('browseMapNote'),'venues');if(run!==browseMapRun)return;resolved.forEach(venue=>{const marker=L.circleMarker([venue.lat,venue.lng],markerStyle).bindPopup(mapPopupHtml(venue)).addTo(browseLayer);browseMarkersByKey.set(venue.key,marker)});attachMapHover('#browseBody');const exact=resolved.filter(venue=>venue.exact).length;$('browseMapNote').textContent=` ${resolved.length}/${venues.length} venues mapped (${exact} exact)`;fitMap(browseMap,resolved)}
+async function renderScheduleMap(){const run=++scheduleMapRun;initMaps();if(!mapReady)return;const selected=events.filter(event=>scheduleIds.has(event.id)).sort((a,b)=>a.date.localeCompare(b.date)||timeToMin(a.start)-timeToMin(b.start));const venues=uniqueVenues(selected,120);scheduleLayer.clearLayers();scheduleMarkersByKey=new Map();if(scheduleRoute){scheduleMap.removeLayer(scheduleRoute);scheduleRoute=null}$('distanceList').classList.add('hidden');$('distanceList').innerHTML='';if(!venues.length){$('scheduleMapNote').textContent=' Add shows to map your route.';fitMap(scheduleMap,[]);return}const resolved=await resolveVenues(venues,$('scheduleMapNote'),'stops');if(run!==scheduleMapRun)return;const byKey=new Map(resolved.map(venue=>[venue.key,venue]));resolved.forEach((venue,index)=>{const marker=L.circleMarker([venue.lat,venue.lng],markerStyle).bindPopup(`<strong>${index+1}. ${esc(venue.base)}</strong>${mapPopupHtml(venue).replace(/^<strong>.*?<\/strong>/,'')}`).addTo(scheduleLayer);scheduleMarkersByKey.set(venue.key,marker)});attachMapHover('#scheduleBody');const ordered=selected.map(event=>{const venue=byKey.get(venueKey(event));return venue?{event,venue,lat:venue.lat,lng:venue.lng}:null}).filter(Boolean);const legs=[];if(ordered.length>1){scheduleRoute=L.polyline(ordered.map(p=>[p.lat,p.lng]),{color:'#b92f2f',weight:3}).addTo(scheduleMap);for(let i=1;i<ordered.length;i+=1){const a=ordered[i-1],b=ordered[i];if(a.venue.key===b.venue.key)continue;const km=distanceKm(a,b);legs.push(`<div><span>${esc(a.event.title)} -> ${esc(b.event.title)}</span><strong>${km.toFixed(1)} km / ~${approxWalkMins(km)} min walk</strong></div>`)}if(legs.length){$('distanceList').innerHTML=legs.join('');$('distanceList').classList.remove('hidden')}}const exact=resolved.filter(venue=>venue.exact).length;$('scheduleMapNote').textContent=` ${resolved.length}/${venues.length} stops mapped (${exact} exact)`;fitMap(scheduleMap,resolved)}
+async function fetchAllEvents(){const pageSize=1000;let from=0,all=[];while(true){const{data,error}=await supabase.from('events').select('*').order('date',{ascending:true}).order('start',{ascending:true}).range(from,from+pageSize-1);if(error)throw error;all=all.concat(data||[]);if(!data||data.length<pageSize)break;from+=pageSize}events=all;buildGenreMenu();applyFilters()}
+async function fetchSchedule(){let{data,error}=await supabase.from('schedule_items').select('event_id,ticket_bought').eq('trip_id',TRIP_ID);if(error&&isTicketColumnError(error))({data,error}=await supabase.from('schedule_items').select('event_id').eq('trip_id',TRIP_ID));if(error)throw error;scheduleIds=new Set((data||[]).map(row=>row.event_id));boughtTickets=new Map((data||[]).map(row=>[row.event_id,Boolean(row.ticket_bought)]));renderSchedule();updateAddButtons()}
+function buildGenreMenu(){const counts=new Map();const add=value=>{const v=String(value||'').trim();if(v.length>=3&&v.length<=34)counts.set(v,(counts.get(v)||0)+1)};events.forEach(event=>{add(event.category);String(event.genre||'').split(/[,/]/).forEach(add)});const options=[...counts.entries()].sort((a,b)=>b[1]-a[1]).slice(0,48).map(([name])=>name);$('genreMenu').innerHTML=options.map(name=>`<label class="checkrow"><input class="genrecheck" type="checkbox" value="${esc(name)}"> <span>${esc(name)}</span></label>`).join('');document.querySelectorAll('.genrecheck').forEach(input=>input.addEventListener('change',()=>{if(input.checked)activeGenres.add(input.value);else activeGenres.delete(input.value);updateGenreSummary();displayLimit=100;applyFilters()}))}
+function updateGenreSummary(){$('genreSummary').textContent=activeGenres.size===0?'Genres: Any':activeGenres.size===1?[...activeGenres][0]:`${activeGenres.size} genres selected`}
+function eventTags(event){return[event.category,...String(event.genre||'').split(/[,/]/)].map(s=>String(s||'').trim()).filter(Boolean)}
+function applyFilters(){const q=$('search').value.trim().toLowerCase(),date=$('dateFilter').value,from=$('startAfter').value?timeToMin($('startAfter').value):0,to=$('startBefore').value?timeToMin($('startBefore').value):1439,minSignal=Number($('minSignal').value||0);visibleEvents=events.filter(event=>{const startMin=timeToMin(event.start);const hay=[event.title,event.company,event.category,event.genre,event.venue,event.location,event.venue_address,event.venue_postcode,event.description,event.signal_label,event.signal_reasons].join(' ').toLowerCase();const tags=eventTags(event);return(!date||event.date===date)&&startMin>=from&&startMin<=to&&Number(event.signal_score||0)>=minSignal&&(!activeGenres.size||[...activeGenres].some(g=>tags.includes(g)))&&(!q||hay.includes(q))});$('visibleCount').textContent=visibleEvents.length.toLocaleString();const bits=[];if(date)bits.push(days[date]);bits.push(`${$('startAfter').value||'00:00'}-${$('startBefore').value||'23:59'}`);if(activeGenres.size)bits.push([...activeGenres].join(', '));if(minSignal)bits.push(`${minSignal}/5+ signal`);if(q)bits.push(`"${q}"`);$('rangeLabel').textContent=bits.join(' / ');renderBrowse();renderBrowseMap()}
+function renderBrowse(){if(!visibleEvents.length){$('browseBody').className='empty';$('browseBody').innerHTML='No events match the current filters.';return}$('browseBody').className='list-pane';const renderedEvents=visibleEvents.slice(0,displayLimit),hiddenCount=Math.max(visibleEvents.length-renderedEvents.length,0),byDay=groupBy(renderedEvents,e=>e.date);$('browseBody').innerHTML=Object.keys(byDay).sort().map(date=>{const byBucket=groupBy(byDay[date],e=>e.bucket||e.start?.slice(0,5)||'00:00');return`<section><div class="dayhead"><h2>${days[date]||date}</h2><div class="muted">${byDay[date].length.toLocaleString()} events</div></div>`+Object.keys(byBucket).sort().map(bucket=>`<div class="slot"><div class="time">${esc(String(bucket).slice(0,5))}</div><div>${byBucket[bucket].map(renderEvent).join('')}</div></div>`).join('')+'</section>'}).join('')+(hiddenCount?`<div class="more-wrap"><button id="showMore">Show 100 more (${hiddenCount.toLocaleString()} hidden)</button></div>`:'');$('showMore')?.addEventListener('click',()=>{displayLimit+=100;renderBrowse();renderBrowseMap()});document.querySelectorAll('.add').forEach(btn=>btn.addEventListener('click',()=>toggleSchedule(btn.dataset.id)));attachMapHover('#browseBody');updateAddButtons()}
+function renderEvent(event){const added=scheduleIds.has(event.id),tags=[event.category,event.genre].filter(Boolean).map((t,i)=>`<span class="tag ${i===0?'cat':''}">${esc(t)}</span>`).join(' '),address=venueAddress(event);return`<article class="event" data-map-key="${esc(venueKey(event))}"><div class="start">${esc(String(event.start).slice(0,5))}</div><div><div class="title-row"><a class="title" target="_blank" rel="noopener" href="${esc(ticketUrl(event))}">${esc(event.title)}</a><button class="add ${added?'added':''}" data-id="${esc(event.id)}">${added?'Added':'Add'}</button></div><div class="meta">${esc(event.company)}</div>${tags}</div><div class="venue"><a target="_blank" rel="noopener" href="${esc(mapsUrl(event))}">${esc(event.venue||'Map search')}</a><div class="location">${esc([event.location,address].filter(Boolean).join(' / '))}</div></div><div class="signalwrap"><div class="signal">${Number(event.signal_score||0)}/5 ${esc(event.signal_label)}</div><div class="why">${esc(event.signal_reasons)}</div></div><div class="price">${esc([event.duration,event.price].filter(Boolean).join(' '))}</div><div class="action"><a class="ticket-link" target="_blank" rel="noopener" href="${esc(ticketUrl(event))}">Box office</a></div>${event.description?`<details><summary>Description</summary><div class="desc">${esc(event.description)}</div></details>`:''}</article>`}
+async function toggleSchedule(eventId){if(scheduleIds.has(eventId)){const{error}=await supabase.from('schedule_items').delete().eq('trip_id',TRIP_ID).eq('event_id',eventId);if(error)return alert(error.message);scheduleIds.delete(eventId);boughtTickets.delete(eventId)}else{let{error}=await supabase.from('schedule_items').insert({trip_id:TRIP_ID,event_id:eventId,ticket_bought:false});if(error&&isTicketColumnError(error))({error}=await supabase.from('schedule_items').insert({trip_id:TRIP_ID,event_id:eventId}));if(error&&!String(error.message).includes('duplicate'))return alert(error.message);scheduleIds.add(eventId);boughtTickets.set(eventId,false)}renderSchedule();updateAddButtons()}
+async function setTicketBought(eventId,bought){boughtTickets.set(eventId,bought);renderSchedule();const{error}=await supabase.from('schedule_items').update({ticket_bought:bought}).eq('trip_id',TRIP_ID).eq('event_id',eventId);if(error){boughtTickets.set(eventId,!bought);renderSchedule();alert(isTicketColumnError(error)?'Run the Supabase ticket_bought migration first, then try again.':error.message)}}
+function updateAddButtons(){document.querySelectorAll('.add').forEach(btn=>{const added=scheduleIds.has(btn.dataset.id);btn.classList.toggle('added',added);btn.textContent=added?'Added':'Add'});$('scheduleTab').textContent=`My Schedule (${scheduleIds.size})`}
+function renderSchedule(){const selected=events.filter(event=>scheduleIds.has(event.id)).sort((a,b)=>a.date.localeCompare(b.date)||timeToMin(a.start)-timeToMin(b.start));const total=selected.reduce((sum,event)=>sum+Number(event.price_amount||0),0);$('scheduleCount').textContent=selected.length.toLocaleString();$('scheduleCost').textContent=money(total);if(!selected.length){$('scheduleBody').className='empty';$('scheduleBody').innerHTML='Your shared schedule is empty. Add shows from Browse.';renderScheduleMap();return}$('scheduleBody').className='list-pane';const byDay=groupBy(selected,e=>e.date);$('scheduleBody').innerHTML=Object.keys(byDay).sort().map(date=>{const cards=byDay[date].map(event=>{const start=timeToMin(event.start),end=start+Number(event.duration_minutes||60),conflict=selected.some(other=>other.id!==event.id&&other.date===event.date&&start<timeToMin(other.start)+Number(other.duration_minutes||60)&&end>timeToMin(other.start)),bought=boughtTickets.get(event.id)===true,address=venueAddress(event);return`<article class="schedule-card ${conflict?'conflict':''} ${bought?'bought':''}" data-map-key="${esc(venueKey(event))}"><div class="start">${esc(String(event.start).slice(0,5))}<br><span class="meta">${minToTime(end)}</span></div><div><a class="title" target="_blank" rel="noopener" href="${esc(ticketUrl(event))}">${esc(event.title)}</a><div class="meta">${esc(event.company)}</div><div class="meta">${esc(event.duration||'')} / ${esc(event.price||'No price listed')} / ${event.signal_score}/5 ${esc(event.signal_label)}${bought?' / Ticket bought':''}</div>${conflict?'<div class="conflict">Time clash</div>':''}</div><div class="venue"><a target="_blank" rel="noopener" href="${esc(mapsUrl(event))}">${esc(event.venue||'Map search')}</a><div class="location">${esc([event.location,address].filter(Boolean).join(' / '))}</div></div><div class="schedule-actions"><label class="bought-toggle"><input type="checkbox" data-bought="${esc(event.id)}" ${bought?'checked':''}> Bought</label><a class="ticket-link" target="_blank" rel="noopener" href="${esc(ticketUrl(event))}">Box office</a><button data-remove="${esc(event.id)}">Remove</button></div></article>`}).join('');return`<section><div class="dayhead"><h2>${days[date]||date}</h2><div class="muted">${byDay[date].length} shows</div></div>${cards}</section>`}).join('');document.querySelectorAll('[data-remove]').forEach(btn=>btn.addEventListener('click',()=>toggleSchedule(btn.dataset.remove)));document.querySelectorAll('[data-bought]').forEach(input=>input.addEventListener('change',()=>setTicketBought(input.dataset.bought,input.checked)));attachMapHover('#scheduleBody');renderScheduleMap()}
+function groupBy(items,getKey){return items.reduce((acc,item)=>{const key=getKey(item);(acc[key]||=[]).push(item);return acc},{})}
+function showTab(name){const schedule=name==='schedule';$('browsePanel').classList.toggle('active',!schedule);$('schedulePanel').classList.toggle('active',schedule);$('browseTab').classList.toggle('active',!schedule);$('scheduleTab').classList.toggle('active',schedule);if(mapReady)setTimeout(()=>{browseMap.invalidateSize();scheduleMap.invalidateSize()},80)}
+const resetAndApply=()=>{displayLimit=100;applyFilters()};
+$('search').addEventListener('input',()=>{clearTimeout(searchTimer);searchTimer=setTimeout(resetAndApply,180)});$('dateFilter').addEventListener('change',resetAndApply);$('startAfter').addEventListener('change',resetAndApply);$('startBefore').addEventListener('change',resetAndApply);$('minSignal').addEventListener('change',resetAndApply);
+document.addEventListener('click',event=>{const zoom=event.target.closest('[data-map-zoom]');if(!zoom)return;const[scope,action]=zoom.dataset.mapZoom.split(':'),map=scope==='schedule'?scheduleMap:browseMap;if(!map)return;if(action==='in')map.zoomIn();if(action==='out')map.zoomOut();if(action==='reset'){if(scope==='schedule')renderScheduleMap();else renderBrowseMap()}});
+$('browseTab').addEventListener('click',()=>showTab('browse'));$('scheduleTab').addEventListener('click',()=>{renderSchedule();showTab('schedule')});$('clearFilters').addEventListener('click',()=>{$('search').value='';$('dateFilter').value='';$('startAfter').value='';$('startBefore').value='';$('minSignal').value='';activeGenres=new Set();document.querySelectorAll('.genrecheck').forEach(input=>input.checked=false);updateGenreSummary();displayLimit=100;applyFilters()});document.querySelectorAll('[data-preset]').forEach(btn=>btn.addEventListener('click',()=>{const[from,to]=btn.dataset.preset.split('-');$('startAfter').value=from;$('startBefore').value=to;displayLimit=100;applyFilters()}));$('clearSchedule').addEventListener('click',async()=>{if(!confirm('Clear the shared schedule?'))return;const{error}=await supabase.from('schedule_items').delete().eq('trip_id',TRIP_ID);if(error)alert(error.message);scheduleIds=new Set();boughtTickets=new Map();renderSchedule();updateAddButtons()});
+supabase.channel('shared-schedule').on('postgres_changes',{event:'*',schema:'public',table:'schedule_items',filter:`trip_id=eq.${TRIP_ID}`},fetchSchedule).subscribe();
+try{await fetchAllEvents();await fetchSchedule()}catch(error){console.error(error);$('browseBody').className='empty';$('browseBody').innerHTML=`Could not load Supabase data: ${esc(error.message)}`}
+</script>
 </body>
 </html>
